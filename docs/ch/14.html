@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>模块化与 npm · JS 通勤课</title>
+<meta name="description" content="从全局变量互相覆盖讲起，把 ESM 与 CommonJS 的写法、package.json 每个字段、npm 命令和版本号规则一次说清。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">模块化与 npm</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 14 章 · 约 38 分钟</div>
+    <h1>模块化与 npm</h1>
+    <p class="lede">从全局变量互相覆盖讲起，把 ESM 与 CommonJS 的写法、package.json 每个字段、npm 命令和版本号规则一次说清。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>一个人写 demo，所有代码塞进一个 HTML 也能跑。但只要开始做真项目，就必须拆文件、用别人的包。</p><p>这一章解决两个问题：<strong>自己的代码怎么拆、怎么互相引用</strong>，以及<strong>别人的代码怎么装、怎么管版本</strong>。</p><p>内容看起来偏「配置」，但它是后面所有项目的地基。第 15 章要把脚本放进页面，第 16 章要发请求，第 18 章要搭一个完整项目，全都依赖这里的 <code>import</code> 和 <code>package.json</code>。</p></blockquote><h2>为什么需要模块</h2><p>先看没有模块时的真实麻烦。假设你写了两个脚本，都放在页面里：</p><pre><code class="lang-js"><span class="tok-c">// a.js</span>
+<span class="tok-k">var</span> count = <span class="tok-n">0</span>;
+
+<span class="tok-k">function</span> <span class="tok-f">formatPrice</span>(cents) {
+  <span class="tok-k">return</span> <span class="tok-s">'¥'</span> + (cents / <span class="tok-n">100</span>).<span class="tok-f">toFixed</span>(<span class="tok-n">2</span>);
+}
+
+<span class="tok-c">// b.js</span>
+<span class="tok-k">var</span> count = <span class="tok-s">'hello'</span>;        <span class="tok-c">// 悄悄覆盖了 a.js 的 count</span>
+
+<span class="tok-k">function</span> <span class="tok-f">formatPrice</span>(n) {   <span class="tok-c">// 又定义了一次，后加载的赢</span>
+  <span class="tok-k">return</span> n + <span class="tok-s">' 元'</span>;
+}</code></pre><p>页面里这样引入：</p><pre><code class="lang-html">&lt;script src=&quot;./a.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;./b.js&quot;&gt;&lt;/script&gt;</code></pre><p>因为普通 <code>&lt;script&gt;</code> 共享同一个全局作用域，<code>b.js</code> 里的 <code>count</code> 和 <code>formatPrice</code> 直接把 <code>a.js</code> 的覆盖了。而且谁赢完全取决于<strong>加载顺序</strong>：把两个标签调换一下，结果就反过来。这种 bug 不会报错，只会让某一块功能悄悄算错。</p><p>把所有代码堆在一个文件里也有类似的问题：变量名越起越长（<code>userListPageSize</code>、<code>userListPageSizeCache</code>），改一处要上下翻两千行，两个人同时改必然冲突。</p><p>模块化（modularization）解决的就是这三件事：</p><ul><li><strong>作用域隔离</strong>：每个文件有自己的作用域，不主动导出，外面就看不见。</li><li><strong>依赖明确</strong>：文件开头写清楚「我用了谁」，不用再靠 <code>&lt;script&gt;</code> 的顺序猜。</li><li><strong>可复用</strong>：一个格式化函数写好，所有项目都能引。</li></ul><p>一个模块就是一个文件，它<strong>只暴露自己该暴露的东西</strong>，其余内部细节全部藏起来。</p><p>拆得太碎也有代价：一个功能跨五个文件，跳来跳去看得很累。判断标准是「职责」，不是「行数」。一个文件只负责一件事，哪怕只有三十行，也是一个清楚的模块；反过来，一个文件里又发请求、又算数据、又改 DOM，就算只有一百行，也该拆。</p><h2>ES Module：现代标准</h2><p>ES Module（简称 ESM）是语言层面的模块规范，浏览器和 Node 都支持。它有两个关键字：<code>export</code> 负责输出，<code>import</code> 负责输入。</p><h3>命名导出</h3><pre><code class="lang-js"><span class="tok-c">// math.js</span>
+<span class="tok-k">export</span> <span class="tok-k">const</span> PI = <span class="tok-n">3.14159</span>;
+
+<span class="tok-k">export</span> <span class="tok-k">function</span> <span class="tok-f">add</span>(a, b) {
+  <span class="tok-k">return</span> a + b;
+}
+
+<span class="tok-k">export</span> <span class="tok-k">const</span> multiply = (a, b) =&gt; a * b;</code></pre><p>在另一个文件里按名字取：</p><pre><code class="lang-js"><span class="tok-c">// main.js</span>
+<span class="tok-k">import</span> { add, PI } <span class="tok-k">from</span> <span class="tok-s">'./math.js'</span>;
+
+console.<span class="tok-f">log</span>(<span class="tok-f">add</span>(<span class="tok-n">2</span>, <span class="tok-n">3</span>));   <span class="tok-c">// 输出: 5</span>
+console.<span class="tok-f">log</span>(PI);          <span class="tok-c">// 输出: 3.14159</span>
+
+<span class="tok-c">// 改名</span>
+<span class="tok-k">import</span> { add as sum, PI as pi } <span class="tok-k">from</span> <span class="tok-s">'./math.js'</span>;
+console.<span class="tok-f">log</span>(<span class="tok-f">sum</span>(<span class="tok-n">1</span>, <span class="tok-n">1</span>), pi);   <span class="tok-c">// 输出: 2 3.14159</span>
+
+<span class="tok-c">// 整体导入</span>
+<span class="tok-k">import</span> * as math <span class="tok-k">from</span> <span class="tok-s">'./math.js'</span>;
+console.<span class="tok-f">log</span>(math.<span class="tok-f">multiply</span>(<span class="tok-n">2</span>, <span class="tok-n">4</span>));   <span class="tok-c">// 输出: 8</span></code></pre><p>命名导出（named export）的规则：</p><ul><li>一个模块可以有任意多个命名导出。</li><li>导入时名字必须对上，想换名字用 <code>as</code>。</li><li><code>import * as math</code> 把所有命名导出收进一个对象，用 <code>math.add</code> 访问。</li><li>用不到的东西不用导入，打包工具能把没用的代码删掉（tree-shaking）。</li></ul><p>这里有一个初学者经常踩的坑：<code>import { add } from './math.js'</code> 的大括号<strong>不是解构赋值</strong>，只是语法长得很像。它不能写默认值，也不能嵌套，名字对不上就是 <code>undefined</code>。</p><h3>默认导出</h3><p>一个模块可以指定一个「主要的东西」作为默认导出：</p><pre><code class="lang-js"><span class="tok-c">// logger.js</span>
+<span class="tok-k">export</span> <span class="tok-k">default</span> <span class="tok-k">function</span> <span class="tok-f">log</span>(message) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'[log]'</span>, message);
+}
+
+<span class="tok-c">// main.js</span>
+<span class="tok-k">import</span> log <span class="tok-k">from</span> <span class="tok-s">'./logger.js'</span>;
+<span class="tok-k">import</span> writeLog <span class="tok-k">from</span> <span class="tok-s">'./logger.js'</span>;   <span class="tok-c">// 名字随便取，指向同一个函数</span>
+
+<span class="tok-f">log</span>(<span class="tok-s">'开始'</span>);        <span class="tok-c">// 输出: [log] 开始</span>
+<span class="tok-f">writeLog</span>(<span class="tok-s">'结束'</span>);   <span class="tok-c">// 输出: [log] 结束</span></code></pre><p>默认导出（default export）的特点：</p><ul><li>一个模块<strong>只能有一个</strong>，写两个直接 <code>SyntaxError</code>。</li><li>导入时不用大括号，名字由导入方随便起。</li><li>上面同时用两个名字导入只是演示「名字自由」，真实项目里选一个就行。</li></ul><p>默认导出和命名导出可以同时存在：</p><pre><code class="lang-js"><span class="tok-c">// config.js</span>
+<span class="tok-k">export</span> <span class="tok-k">const</span> API_URL = <span class="tok-s">'https://api.example.com'</span>;
+<span class="tok-k">export</span> <span class="tok-k">const</span> TIMEOUT = <span class="tok-n">5000</span>;
+<span class="tok-k">export</span> <span class="tok-k">default</span> { retry: <span class="tok-n">3</span>, debug: <span class="tok-k">false</span> };
+
+<span class="tok-c">// main.js</span>
+<span class="tok-k">import</span> config, { API_URL, TIMEOUT } <span class="tok-k">from</span> <span class="tok-s">'./config.js'</span>;
+
+console.<span class="tok-f">log</span>(API_URL);        <span class="tok-c">// 输出: https://api.example.com</span>
+console.<span class="tok-f">log</span>(TIMEOUT);        <span class="tok-c">// 输出: 5000</span>
+console.<span class="tok-f">log</span>(config.retry);   <span class="tok-c">// 输出: 3</span></code></pre><p>注意顺序：默认导出的名字写在<strong>大括号外面、最前面</strong>，命名导出放在大括号里。写成 <code>import { config, API_URL }</code> 会拿不到默认导出。</p><h3>转出口与动态导入</h3><p>有时候你希望做一个「统一入口」，让别处只从一个路径导入：</p><pre><code class="lang-js"><span class="tok-c">// utils/index.js</span>
+<span class="tok-k">export</span> { add } <span class="tok-k">from</span> <span class="tok-s">'./math.js'</span>;
+<span class="tok-k">export</span> * <span class="tok-k">from</span> <span class="tok-s">'./format.js'</span>;
+
+<span class="tok-c">// 注意：export * 只转发命名导出，不会把 format.js 的 default 一起导出</span></code></pre><p><code>export { add } from './math.js'</code> 是「导入再导出」，本文件并不会拿到 <code>add</code> 这个变量，只是把别人家的东西转手暴露出去。<code>export *</code> 会把目标模块所有命名导出都转发。</p><p>默认导出没法用 <code>export *</code> 转发，要单独写 <code>export { default } from './format.js'</code>。</p><p>还有一种<strong>动态导入（dynamic import）</strong>，用在「点了按钮才加载」的场景：</p><pre><code class="lang-js">button.<span class="tok-f">addEventListener</span>(<span class="tok-s">'click'</span>, <span class="tok-k">async</span> () =&gt; {
+  <span class="tok-k">const</span> { drawChart } = <span class="tok-k">await</span> <span class="tok-k">import</span>(<span class="tok-s">'./chart.js'</span>);
+  <span class="tok-f">drawChart</span>();
+});</code></pre><p><code>import()</code> 是函数调用，返回 Promise，所以能 <code>await</code>。它和静态 <code>import</code> 的区别是：静态导入在文件加载时就要解析，动态导入可以晚一点，甚至根据条件决定加载哪个文件。图表、编辑器这类体积大又未必用到的功能，常用它做懒加载。</p><h3>默认导出还是命名导出</h3><div class="table-wrap"><table><thead><tr><th>对比项</th><th>命名导出</th><th>默认导出</th></tr></thead><tbody><tr><td>一个模块能有几个</td><td>任意多个</td><td>只能一个</td></tr><tr><td>导出写法</td><td><code>export const x</code> 或 <code>export { x }</code></td><td><code>export default ...</code></td></tr><tr><td>导入写法</td><td><code>import { x }</code>，名字必须对</td><td><code>import 任意名字</code></td></tr><tr><td>改名</td><td><code>import { x as y }</code></td><td>直接写想要的名字</td></tr><tr><td>编辑器跳转、重命名</td><td>好</td><td>差，名字是导入方起的</td></tr><tr><td>适合</td><td>工具函数、常量、多个相关功能</td><td>一个文件只负责一件事，比如组件、类</td></tr></tbody></table></div><p>选择建议：</p><ul><li>公共工具库、<code>utils</code> 目录，优先命名导出。名字固定，搜索和重构都方便。</li><li>一个文件就是一个组件或一个类，用默认导出更自然，React 和 Vue 项目里很常见。</li><li>不管选哪种，<strong>一个项目里保持一致</strong>。混着用会让别人猜「这个文件到底该怎么导入」。</li></ul><p>ESM 还有一个容易被忽略的优点：导入是<strong>静态</strong>的。打包工具在你运行之前就能画出完整的依赖图，所以能做 tree-shaking、能做代码分割。CommonJS 的 <code>require</code> 是运行时才执行的，打包工具只能靠猜。</p><h3>浏览器里的 ESM</h3><p>浏览器原生支持 ESM，但必须声明 <code>type=&quot;module&quot;</code>：</p><pre><code class="lang-html">&lt;script type=&quot;module&quot; src=&quot;./main.js&quot;&gt;&lt;/script&gt;</code></pre><p>这个属性的行为和一普通脚本不同：</p><ul><li><strong>延迟执行</strong>：默认相当于加了 <code>defer</code>，等 HTML 解析完才执行，不会阻塞页面。</li><li><strong>严格模式</strong>：模块代码自动运行在 <code>'use strict'</code> 下，未声明变量直接报错。</li><li><strong>独立作用域</strong>：模块里的顶层变量不会挂到 <code>window</code> 上，不会污染全局。</li><li><strong>只执行一次</strong>：同一个模块被多个文件导入，也只执行一遍。</li><li><strong>必须通过服务器访问</strong>：直接双击打开 <code>file://</code> 的 HTML，导入会因跨域被拦，报 CORS 错误。用 <code>npx serve</code> 或 VS Code 的 Live Server 起一个本地服务即可。CORS 是浏览器的安全策略，<code>file://</code> 被视为不安全的来源；这不是代码写错了，起服务就能解决。</li><li><strong>路径要写全</strong>：<code>./math.js</code> 不能写成 <code>./math</code>。</li></ul><div class="callout callout-warn"><span class="callout-label">注意</span><p>浏览器原生 ESM 不认识「裸模块名」。写 <code>import dayjs from 'dayjs'</code> 会直接报错，因为浏览器不知道去 <code>node_modules</code> 里找。真实项目里这一步由 Vite、webpack 这类打包工具处理，或者用 <code>importmap</code> 手动映射。第 19 章会讲构建工具。</p></div><h2>CommonJS：Node 的老标准</h2><p>Node 刚出现时还没有 ESM，它自己实现了一套模块系统，叫 CommonJS（简称 CJS）。写法是 <code>require</code> 加 <code>module.exports</code>：</p><pre><code class="lang-js"><span class="tok-c">// math.cjs</span>
+<span class="tok-k">const</span> add = (a, b) =&gt; a + b;
+<span class="tok-k">const</span> PI = <span class="tok-n">3.14159</span>;
+
+module.exports = { add, PI };
+
+<span class="tok-c">// main.cjs</span>
+<span class="tok-k">const</span> { add, PI } = <span class="tok-f">require</span>(<span class="tok-s">'./math.cjs'</span>);
+
+console.<span class="tok-f">log</span>(<span class="tok-f">add</span>(<span class="tok-n">1</span>, <span class="tok-n">2</span>));   <span class="tok-c">// 输出: 3</span>
+console.<span class="tok-f">log</span>(PI);          <span class="tok-c">// 输出: 3.14159</span></code></pre><p>几个要点：</p><ul><li><code>module.exports</code> 决定这个文件输出什么，可以是一个对象，也可以直接是一个函数：<code>module.exports = add</code>。</li><li><code>require</code> 是同步执行的，执行到那一行才去加载文件。</li><li><code>require('./math')</code> 可以省略 <code>.js</code>，Node 会自动补全，也会自动找目录下的 <code>index.js</code>。</li><li><code>require</code> 返回的就是 <code>module.exports</code> 那个值，可以直接解构。</li></ul><p>Node 生态里两种模块长期共存。判断一个项目用哪种，看两点：</p><ul><li>文件后缀：<code>.mjs</code> 一定是 ESM，<code>.cjs</code> 一定是 CommonJS，<code>.js</code> 看 <code>package.json</code> 的 <code>type</code>。</li><li><code>package.json</code> 里 <code>&quot;type&quot;: &quot;module&quot;</code> 表示 <code>.js</code> 按 ESM 解析；不写或写 <code>&quot;commonjs&quot;</code> 则按 CommonJS 解析。</li></ul><div class="table-wrap"><table><thead><tr><th>对比项</th><th>ESM</th><th>CommonJS</th></tr></thead><tbody><tr><td>语法</td><td><code>import</code> / <code>export</code></td><td><code>require</code> / <code>module.exports</code></td></tr><tr><td>加载时机</td><td>静态解析，加载前就确定依赖</td><td>运行时执行到 <code>require</code> 才加载</td></tr><tr><td>导入的值</td><td>只读的实时绑定</td><td><code>module.exports</code> 上的值，解构后是拷贝</td></tr><tr><td>顶层 await</td><td>支持</td><td>不支持</td></tr><tr><td>严格模式</td><td>默认开启</td><td>默认关闭</td></tr><tr><td>浏览器</td><td>原生支持 <code>type=&quot;module&quot;</code></td><td>不支持，需要打包</td></tr><tr><td>典型场景</td><td>前端项目、新 Node 项目</td><td>老 Node 项目、部分工具链</td></tr></tbody></table></div><p>新项目一律用 ESM。看到老代码里的 <code>require</code>，知道它是 CommonJS 就行，不用特意去改。</p><p>为什么还要学它？因为大量老项目、脚手架配置和 Node 工具链仍在用 CommonJS。你看到 <code>require</code> 和 <code>module.exports</code> 时不至于发懵，也能判断一个报错是不是模块规范不匹配造成的。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>ESM 文件里不能直接用 <code>require</code>，会报 <code>ReferenceError: require is not defined</code>。反过来，CommonJS 里也不能直接写 <code>import</code>。一个项目里两种语法不能混在同一个文件里（动态 <code>import()</code> 除外，它在两种模块里都能用）。</p></div><h2>package.json：项目的身份证</h2><p>每个 Node 项目根目录都有一个 <code>package.json</code>，它记录项目叫什么、怎么跑、依赖哪些包。</p><pre><code class="lang-json">{
+  <span class="tok-s">&quot;name&quot;</span>: <span class="tok-s">&quot;my-app&quot;</span>,
+  <span class="tok-s">&quot;version&quot;</span>: <span class="tok-s">&quot;1.0.0&quot;</span>,
+  <span class="tok-s">&quot;type&quot;</span>: <span class="tok-s">&quot;module&quot;</span>,
+  <span class="tok-s">&quot;scripts&quot;</span>: {
+    <span class="tok-s">&quot;dev&quot;</span>: <span class="tok-s">&quot;node --watch server.js&quot;</span>,
+    <span class="tok-s">&quot;start&quot;</span>: <span class="tok-s">&quot;node server.js&quot;</span>
+  },
+  <span class="tok-s">&quot;dependencies&quot;</span>: {
+    <span class="tok-s">&quot;dayjs&quot;</span>: <span class="tok-s">&quot;^1.11.10&quot;</span>
+  },
+  <span class="tok-s">&quot;devDependencies&quot;</span>: {
+    <span class="tok-s">&quot;eslint&quot;</span>: <span class="tok-s">&quot;^8.57.0&quot;</span>
+  }
+}</code></pre><p>逐个字段说：</p><ul><li><code>name</code>：包名。只能小写，不能有空格，发布到 npm 时还必须全局唯一。本地项目随便起，但别用中文。</li><li><code>version</code>：版本号，格式是「主版本.次版本.修订号」，下面会细讲。</li><li><code>type</code>：决定 <code>.js</code> 文件按哪种模块解析。写 <code>&quot;module&quot;</code> 就是 ESM，不写就是 CommonJS。这一行是新手最常见的「import 报错」来源。代码里写了 <code>import</code>，运行却报 <code>SyntaxError: Cannot use import statement outside a module</code>，九成就是漏了它。</li><li><code>scripts</code>：命令别名。<code>npm run dev</code> 实际执行的就是这里的 <code>node --watch server.js</code>。</li><li><code>dependencies</code>：<strong>运行时</strong>需要的包。代码里 <code>import</code> 了谁，谁就该在这里。</li><li><code>devDependencies</code>：只在开发、构建、测试时用的包，比如 ESLint、Vite、测试框架。它们不会被打进最终产物。</li></ul><p>为什么要把两类依赖分开？因为部署时服务器只需要 <code>dependencies</code>。构建工具装到 <code>devDependencies</code>，生产环境就能少装几百 MB，也不会把只在本地用的东西带上去。</p><p>判断标准很简单：<strong>这段代码在用户打开网页时还会运行吗？</strong> 会，就是 <code>dependencies</code>；只在开发时跑，就是 <code>devDependencies</code>。</p><p><code>npm init -y</code> 会生成一个最小 <code>package.json</code>，<code>-y</code> 表示所有问题都用默认值，不再一条条问你。</p><h2>npm 常用命令</h2><p>npm 是 Node 自带的包管理器。下面这些命令覆盖日常 95% 的操作：</p><pre><code class="lang-bash">npm init -y              # 生成 package.json
+npm install dayjs        # 安装到 dependencies
+npm install -D eslint    # 安装到 devDependencies
+npm uninstall dayjs      # 卸载，同时从 package.json 移除
+npm install             # 不带包名：按 package.json 和 lock 还原全部依赖
+npm ls --depth=0         # 只看顶层装了哪些包</code></pre><p>拿到别人的项目，第一步永远是 <code>npm install</code>。它会读 <code>package.json</code>，再结合 <code>package-lock.json</code> 把依赖装进 <code>node_modules</code>。不带包名时，它先按 <code>package.json</code> 里的范围解析，再让 lock 文件把版本钉死；两者不一致时，以 <code>package.json</code> 为准并更新 lock。</p><p>CI 环境更推荐 <code>npm ci</code>：它要求 lock 与 <code>package.json</code> 完全一致，装完不改 lock，速度也更快，适合自动化流程。</p><p>运行脚本和临时工具：</p><pre><code class="lang-bash">npm run dev              # 执行 scripts 里的 dev
+npm run build            # 执行 scripts 里的 build
+npx eslint .             # 运行本地装的 eslint，不用全局安装
+npx create-vite my-app   # 临时下载脚手架并执行</code></pre><p><code>npm run</code> 只能执行 <code>scripts</code> 里定义过的名字，写错会提示「Missing script」。<code>npx</code> 则会先找本地 <code>node_modules/.bin</code>，找不到再临时下载，用完即走，不会污染全局环境。</p><h2>语义化版本：<code>^</code> 和 <code>~</code> 到底放多宽</h2><p>版本号 <code>1.11.10</code> 读作「主版本 1、次版本 11、修订号 10」。语义化版本（semver）约定：</p><ul><li>主版本变了：可能有<strong>不兼容</strong>的改动，升级要小心。</li><li>次版本变了：新增功能，向后兼容。</li><li>修订号变了：修 bug，向后兼容。</li></ul><p><code>package.json</code> 里写的往往不是一个精确版本，而是一个范围：</p><pre><code class="lang-json">{
+  <span class="tok-s">&quot;dependencies&quot;</span>: {
+    <span class="tok-s">&quot;dayjs&quot;</span>: <span class="tok-s">&quot;^1.11.10&quot;</span>,
+    <span class="tok-s">&quot;echarts&quot;</span>: <span class="tok-s">&quot;~5.5.1&quot;</span>,
+    <span class="tok-s">&quot;lodash&quot;</span>: <span class="tok-s">&quot;4.17.21&quot;</span>
+  }
+}</code></pre><div class="table-wrap"><table><thead><tr><th>写法</th><th>允许的范围</th><th>含义</th></tr></thead><tbody><tr><td><code>^1.11.10</code></td><td><code>&gt;=1.11.10 &lt;2.0.0</code></td><td>不跨主版本，次版本和修订号都可以升</td></tr><tr><td><code>~5.5.1</code></td><td><code>&gt;=5.5.1 &lt;5.6.0</code></td><td>只允许修订号升级</td></tr><tr><td><code>4.17.21</code></td><td>只有 <code>4.17.21</code></td><td>精确锁定</td></tr><tr><td><code>*</code> 或 <code>latest</code></td><td>任意版本</td><td>不要用，今天能跑明天可能就崩</td></tr></tbody></table></div><p><code>npm install dayjs</code> 默认写入 <code>^</code>，这是 npm 认为比较安全的策略：修 bug 和新功能自动拿，破坏性改动不碰。</p><p>但 <code>^</code> 有一个特殊情况：<strong>主版本是 0 时，它更保守</strong>。<code>^0.2.3</code> 的范围是 <code>&gt;=0.2.3 &lt;0.3.0</code>，因为 0.x 被视为「还在不稳定阶段」，次版本也可能破坏兼容。<code>^0.0.3</code> 更窄，只允许 <code>0.0.3</code> 本身。</p><p>理解这些符号的实际意义：<code>^</code> 不是「随便升」，<code>~</code> 也不是「完全锁定」。真正锁定精确版本的是 lock 文件。</p><h2>package-lock.json 与 node_modules</h2><p><code>package.json</code> 写的是「我想要什么范围」，<code>package-lock.json</code> 记录的是「上次实际装了什么」：</p><pre><code class="lang-json">{
+  <span class="tok-s">&quot;name&quot;</span>: <span class="tok-s">&quot;my-app&quot;</span>,
+  <span class="tok-s">&quot;version&quot;</span>: <span class="tok-s">&quot;1.0.0&quot;</span>,
+  <span class="tok-s">&quot;lockfileVersion&quot;</span>: <span class="tok-n">3</span>,
+  <span class="tok-s">&quot;packages&quot;</span>: {
+    <span class="tok-s">&quot;node_modules/dayjs&quot;</span>: {
+      <span class="tok-s">&quot;version&quot;</span>: <span class="tok-s">&quot;1.11.13&quot;</span>,
+      <span class="tok-s">&quot;resolved&quot;</span>: <span class="tok-s">&quot;https://registry.npmjs.org/dayjs/-/dayjs-1.11.13.tgz&quot;</span>
+    }
+  }
+}</code></pre><p>它包含每个包的确切版本、下载地址、完整性校验值，以及完整的依赖树。作用是<strong>让所有人装出一模一样的依赖</strong>。没有它，你写 <code>^1.11.10</code>，同事下周装可能拿到 <code>1.11.14</code>，线上又是另一个版本，出现「我这能跑你那不能跑」。</p><p>所以：<code>package-lock.json</code> <strong>必须提交到 Git</strong>。CI 环境用 <code>npm ci</code> 安装，它只按 lock 文件装，不会修改 lock，速度也更快。</p><p>判断一个仓库是否规范，看两件事就够了：有没有 lock 文件，<code>.gitignore</code> 里有没有 <code>node_modules</code>。这两条能避免大部分「在我电脑上能跑」的问题。</p><p><code>node_modules</code> 则是依赖实际解压后的目录：</p><ul><li>体积巨大，几万个文件很常见。</li><li>包含平台相关的二进制文件，换操作系统可能不适用。</li><li>可以完全由 <code>package.json</code> + lock 文件还原，没必要存进 Git。</li></ul><p>因此项目根目录要有 <code>.gitignore</code>：</p><pre><code class="lang-text">node_modules/
+dist/
+.env</code></pre><p><code>dist/</code> 是构建产物，同样能重新生成；<code>.env</code> 存密钥，绝对不能提交。这三个是前端项目最常见的忽略项。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>不要手动修改 <code>node_modules</code> 里的代码。下次 <code>npm install</code> 一覆盖就没了，而且别人拉下来也不会有你的改动。确实需要修补第三方包，用 <code>patch-package</code> 或在本地 fork，别直接改。</p></div><h2>本地依赖与全局安装</h2><div class="table-wrap"><table><thead><tr><th>方式</th><th>命令</th><th>装在哪</th><th>谁能用</th></tr></thead><tbody><tr><td>本地</td><td><code>npm install dayjs</code></td><td>项目 <code>node_modules</code></td><td>只有当前项目</td></tr><tr><td>全局</td><td><code>npm install -g pnpm</code></td><td>系统目录</td><td>所有项目</td></tr><tr><td>临时</td><td><code>npx vite</code></td><td>缓存，用完即走</td><td>这一次</td></tr></tbody></table></div><p>建议：</p><ul><li><strong>项目依赖一律本地装</strong>，版本写进 <code>package.json</code>，别人 <code>npm install</code> 就能还原。</li><li>**命令行工具优先用 <code>npx</code>**，避免全局装一堆版本冲突的东西。</li><li>只有包管理器本身（pnpm、yarn）或确实需要全局命令的工具，才用 <code>-g</code>。</li></ul><p>全局安装最大的问题是版本只有一个。项目 A 要 Vite 4，项目 B 要 Vite 5，全局装哪个都不对。本地安装则每个项目互不影响。</p><p>还有一个细节：全局包的版本不受项目控制，团队成员之间很难对齐。把命令写进 <code>scripts</code>，所有人执行 <code>npm run xxx</code> 时用的就是项目本地版本，这才是可复现的做法。</p><h2><code>import</code> 路径的规则</h2><p>路径写错是模块化阶段最常见的报错。规则其实不多：</p><pre><code class="lang-js"><span class="tok-k">import</span> <span class="tok-s">'./polyfill.js'</span>;                        <span class="tok-c">// 只为执行，不取任何变量</span>
+<span class="tok-k">import</span> { add } <span class="tok-k">from</span> <span class="tok-s">'./math.js'</span>;               <span class="tok-c">// 同级目录，必须 ./ 开头</span>
+<span class="tok-k">import</span> { formatPrice } <span class="tok-k">from</span> <span class="tok-s">'../utils/format.js'</span>;
+<span class="tok-k">import</span> dayjs <span class="tok-k">from</span> <span class="tok-s">'dayjs'</span>;                     <span class="tok-c">// 裸模块名，去 node_modules 找</span>
+<span class="tok-k">import</span> { readFile } <span class="tok-k">from</span> <span class="tok-s">'node:fs/promises'</span>;   <span class="tok-c">// Node 内置模块</span></code></pre><ul><li>**相对路径必须以 <code>./</code> 或 <code>../</code> 开头**。写 <code>'math.js'</code> 会被当成包名，去 <code>node_modules</code> 里找，然后报找不到。</li><li><strong>Node 的 ESM 必须写扩展名</strong>。<code>./math</code> 不行，要 <code>./math.js</code>。浏览器原生 ESM 同理。</li><li>**ESM 不会自动找目录下的 <code>index.js</code>**。<code>./utils</code> 不行，要 <code>./utils/index.js</code>。</li><li>裸模块名（bare specifier）指包名，比如 <code>dayjs</code>，由 Node 或打包工具负责解析。</li><li><code>node:</code> 前缀表示 Node 内置模块，比如 <code>node:fs</code>、<code>node:path</code>，加上前缀能避免和同名第三方包混淆。</li><li><code>@/</code> 这类别名不是语言特性，需要打包工具或 <code>tsconfig</code> 配置，浏览器原生不认识。</li></ul><div class="callout callout-warn"><span class="callout-label">注意</span><p>CommonJS 的 <code>require</code> 宽松得多：可以省 <code>.js</code>，可以指向目录自动找 <code>index.js</code>。所以从老项目迁到 ESM 时，一批「本来能跑」的导入会突然报 <code>ERR_MODULE_NOT_FOUND</code>。这不是 ESM 坏了，是它不再帮你猜。</p></div><h2>一个最小的 ESM 项目</h2><p>把上面的知识拼起来，一个能跑的项目长这样：</p><pre><code class="lang-text">my-app/
+  package.json
+  src/
+    main.js
+    utils/
+      format.js</code></pre><pre><code class="lang-js"><span class="tok-c">// src/utils/format.js</span>
+<span class="tok-k">export</span> <span class="tok-k">function</span> <span class="tok-f">formatPrice</span>(cents) {
+  <span class="tok-k">return</span> <span class="tok-s">'¥'</span> + (cents / <span class="tok-n">100</span>).<span class="tok-f">toFixed</span>(<span class="tok-n">2</span>);
+}
+
+<span class="tok-c">// src/main.js</span>
+<span class="tok-k">import</span> { formatPrice } <span class="tok-k">from</span> <span class="tok-s">'./utils/format.js'</span>;
+
+console.<span class="tok-f">log</span>(<span class="tok-f">formatPrice</span>(<span class="tok-n">4998</span>));   <span class="tok-c">// 输出: ¥49.98</span></code></pre><pre><code class="lang-bash">node src/main.js
+# 输出: ¥49.98</code></pre><p>要让这段代码跑起来，<code>package.json</code> 里必须有 <code>&quot;type&quot;: &quot;module&quot;</code>。否则 Node 会把 <code>main.js</code> 当 CommonJS 解析，遇到 <code>import</code> 直接报：</p><pre><code class="lang-text">SyntaxError: Cannot use import statement outside a module</code></pre><p>这句话的意思是「你在一个非模块文件里用了 import」。九成的解决办法就是加 <code>&quot;type&quot;: &quot;module&quot;</code>，或者把文件后缀改成 <code>.mjs</code>。</p><p>注意 <code>formatPrice</code> 接收的是「分」，输出时除以 100。这个约定来自第 2 章讲的浮点精度问题：金额用整数分存储和计算，只在展示时转成元。</p><h2>常见误区清单</h2><div class="table-wrap"><table><thead><tr><th>写法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td>忘了 <code>&quot;type&quot;: &quot;module&quot;</code> 就在 <code>.js</code> 里写 <code>import</code></td><td><code>SyntaxError: Cannot use import statement outside a module</code></td><td>Node 默认按 CommonJS 解析 <code>.js</code></td></tr><tr><td>Node ESM 里 <code>import { add } from './math'</code></td><td><code>ERR_MODULE_NOT_FOUND</code></td><td>ESM 不猜扩展名，要写 <code>./math.js</code></td></tr><tr><td>模块只有默认导出，却写 <code>import { log }</code></td><td><code>log</code> 是 <code>undefined</code></td><td>默认导出要用 <code>import log from</code></td></tr><tr><td>一个文件写两个 <code>export default</code></td><td><code>SyntaxError</code></td><td>默认导出只能有一个</td></tr><tr><td>用 <code>export *</code> 想连带默认导出</td><td>默认导出不会出现</td><td><code>export *</code> 只转发命名导出</td></tr><tr><td>把 <code>node_modules</code> 提交到 Git</td><td>仓库巨大、冲突不断</td><td>可由 lock 文件还原，且含平台相关文件</td></tr><tr><td><code>npm install -D dayjs</code> 后在运行时代码里用</td><td>生产环境可能找不到模块</td><td>开发依赖不会装进生产依赖</td></tr><tr><td><code>^0.2.3</code> 以为能升到 <code>0.9</code></td><td>实际只到 <code>0.2.x</code></td><td>0.x 视为不稳定，只放宽修订号</td></tr><tr><td>在 ESM 里写 <code>require</code></td><td><code>ReferenceError: require is not defined</code></td><td>ESM 没有 <code>require</code>，要用 <code>import</code></td></tr><tr><td>循环导入时立刻使用对方的值</td><td>可能得到 <code>undefined</code></td><td>对方模块还没执行完，绑定尚未初始化</td></tr><tr><td><code>import './utils'</code> 指望自动找 <code>index.js</code></td><td>找不到模块</td><td>ESM 不自动补目录和扩展名</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary><code>export default</code> 和 <code>export const</code> 有什么区别？</summary><div class="quiz-body"><p><code>export default</code> 每个模块只能有一个，导入时名字随便取、不用大括号；<code>export const</code> 是命名导出，可以有多个，导入时必须用对应名字，想改名用 <code>as</code>。</p></div></details><details class="quiz"><summary>一个模块只写了 <code>export default function log() {}</code>，另一个文件写 <code>import { log } from './logger.js'</code>，会发生什么？</summary><div class="quiz-body"><p><code>log</code> 是 <code>undefined</code>，调用时才会报 <code>log is not a function</code>。默认导出必须用 <code>import log from './logger.js'</code>，不能加大括号。</p></div></details><details class="quiz"><summary><code>^1.2.3</code> 和 <code>^0.2.3</code> 分别允许升到哪个范围？</summary><div class="quiz-body"><p><code>^1.2.3</code> 允许 <code>&gt;=1.2.3 &lt;2.0.0</code>；<code>^0.2.3</code> 允许 <code>&gt;=0.2.3 &lt;0.3.0</code>。主版本为 0 时，npm 认为还不稳定，caret 只放宽修订号。</p></div></details><details class="quiz"><summary><code>node_modules</code> 为什么不提交到 Git？删掉后项目还能恢复吗？</summary><div class="quiz-body"><p>它体积大、文件多、含平台相关二进制，而且能由 <code>package.json</code> 加 <code>package-lock.json</code> 完整还原。删掉后执行 <code>npm install</code> 即可恢复。</p></div></details><details class="quiz"><summary><code>npm install dayjs</code> 和 <code>npm install -D dayjs</code> 有什么区别？</summary><div class="quiz-body"><p>前者写入 <code>dependencies</code>，表示运行时需要；后者写入 <code>devDependencies</code>，只在开发、构建、测试时需要。装错会影响生产环境安装和产物体积。</p></div></details><details class="quiz"><summary>在 Node 里写 <code>import { add } from './math.js'</code> 报 <code>Cannot use import statement outside a module</code>，最可能的原因是什么？</summary><div class="quiz-body"><p><code>package.json</code> 里没有 <code>&quot;type&quot;: &quot;module&quot;</code>，Node 把 <code>.js</code> 当成了 CommonJS。加上这一行，或把后缀改成 <code>.mjs</code>。</p></div></details><details class="quiz"><summary><code>export * from './format.js'</code> 会把 <code>format.js</code> 的默认导出一起转出去吗？</summary><div class="quiz-body"><p>不会。<code>export *</code> 只转发命名导出。要转发默认导出，得单独写 <code>export { default } from './format.js'</code>。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>新建一个空文件夹，执行 <code>npm init -y</code>，安装 <code>dayjs</code>，在 <code>package.json</code> 里加上 <code>&quot;type&quot;: &quot;module&quot;</code>，写 <code>main.js</code> 用 <code>dayjs</code> 打印当前时间。 验收：<code>node main.js</code> 能输出格式化后的时间；<code>dependencies</code> 里有 <code>dayjs</code>；<code>node_modules</code> 目录存在。</li></ol><ol><li>把上一章练习里的「格式化金额」和「打印结果」拆成两个文件：<code>utils/format.js</code> 用命名导出，<code>main.js</code> 用 <code>import { formatPrice } from './utils/format.js'</code> 引入。 验收：<code>node main.js</code> 输出 <code>¥49.98</code>；把 <code>format.js</code> 改名为 <code>format.js</code> 以外的名字后，导入路径同步修改才能跑，说明依赖是显式的。</li></ol><ol><li>在 <code>package.json</code> 的 <code>scripts</code> 里加 <code>&quot;hello&quot;: &quot;node main.js&quot;</code>，用 <code>npm run hello</code> 执行。 验收：<code>npm run hello</code> 输出与 <code>node main.js</code> 一致；故意写 <code>npm run helo</code> 会提示缺少脚本。</li></ol><p><strong>进阶</strong></p><ol><li>建一个 <code>utils/index.js</code>，用 <code>export { formatPrice } from './format.js'</code> 和 <code>export * from './math.js'</code> 做统一出口，<code>main.js</code> 只从 <code>./utils/index.js</code> 导入。 验收：<code>main.js</code> 里不出现 <code>./utils/format.js</code>；两个模块的函数都能正常调用；能解释为什么 <code>export *</code> 不会带上默认导出。</li></ol><ol><li>找一个开源前端项目的 <code>package.json</code>，列出 <code>dependencies</code> 和 <code>devDependencies</code> 各三个包，说明它们分别做什么；再看它的版本范围，指出哪个包允许跨次版本升级。 验收：能正确区分运行时依赖和构建依赖；能说出 <code>^</code> 与 <code>~</code> 在该项目里的实际范围；能指出 <code>package-lock.json</code> 是否存在。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>这一章的命令和配置，第一次做会觉得琐碎，但它们是后面每一章的起点：第 15 章会往 <code>index.html</code> 里放 <code>&lt;script type=&quot;module&quot;&gt;</code>，第 16 章的 <code>fetch</code> 要跑在本地服务器上，第 18 章会把待办项目拆成多个模块，第 19 章会用 Vite 管理依赖和构建。</p><p>真正需要形成肌肉记忆的只有四件事：**导入路径写全 <code>./</code> 和扩展名<strong>、</strong><code>type: module</code> 别忘了<strong>、</strong>运行时依赖和开发依赖分开放<strong>、</strong><code>node_modules</code> 不进 Git**。其余细节遇到再查。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="13.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="15.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"14","title":"模块化与 npm"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

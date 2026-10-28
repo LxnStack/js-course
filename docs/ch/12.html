@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ES6+ 必会语法 · JS 通勤课</title>
+<meta name="description" content="解构、展开、模板字符串、默认参数、可选链、Set 与 Map、for...of，把现代 JS 里每天都会遇到的写法一次讲透。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">ES6+ 必会语法</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 12 章 · 约 36 分钟</div>
+    <h1>ES6+ 必会语法</h1>
+    <p class="lede">解构、展开、模板字符串、默认参数、可选链、Set 与 Map、for...of，把现代 JS 里每天都会遇到的写法一次讲透。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>前面十一章讲的是语言本身：变量、函数、对象、数组、作用域、原型。这一章换个角度，讲<strong>写法</strong>。</p><p>现代项目里，<code>const { name, age } = user</code> 这种代码比 <code>user.name</code> 还常见。这些语法不学，你读别人的代码会卡住，自己写也会又长又啰嗦。</p><p>这一章不引入太多新概念，主要是把第 6 章的数组、第 7 章的对象换一种更短的写法，再补上 <code>Set</code>、<code>Map</code> 和 <code>for...of</code>。学完你能把一段二十行的老代码压到五行，并且看懂主流项目里的绝大部分语法。</p></blockquote><h2>为什么需要它</h2><p>先看一段真实项目里天天出现的代码。假设接口返回了这样一个对象：</p><pre><code class="lang-js"><span class="tok-k">const</span> response = {
+  code: <span class="tok-n">0</span>,
+  data: {
+    user: {
+      id: <span class="tok-n">1024</span>,
+      name: <span class="tok-s">'小明'</span>,
+      profile: { city: <span class="tok-s">'上海'</span>, tags: [<span class="tok-s">'新用户'</span>] },
+    },
+  },
+};
+
+<span class="tok-c">// 老写法：一层层往下取</span>
+<span class="tok-k">const</span> user = response.data.user;
+<span class="tok-k">const</span> id = user.id;
+<span class="tok-k">const</span> name = user.name;
+<span class="tok-k">const</span> city = user.profile.city;
+
+console.<span class="tok-f">log</span>(id, name, city);   <span class="tok-c">// 输出: 1024 小明 上海</span></code></pre><p>四行代码只为了拿三个值。如果之后还要拿 <code>tags</code>，就得再加一行；如果产品经理说「再加个手机号」，你又得往上补。更麻烦的是，只要中间任何一层是 <code>undefined</code>，比如接口出错时 <code>data</code> 不存在，这四行里就有一行直接抛错，整个页面白屏。</p><p>用解构（destructuring）写，同样的事情只要一段：</p><pre><code class="lang-js"><span class="tok-k">const</span> {
+  data: {
+    user: { id, name, profile: { city } },
+  },
+} = response;
+
+console.<span class="tok-f">log</span>(id, name, city);   <span class="tok-c">// 输出: 1024 小明 上海</span></code></pre><p>结果完全一样，但意图清楚得多：<strong>我要从右边这个结构里，按形状掏出这几个值</strong>。</p><p>这一章讲的就是这类语法。它们不会让程序跑得更快，但会让代码更短、更少出错，也让你能读懂别人写的代码。需要提醒一句：短不等于好。解构写到四五层深，读的人要在脑子里画一棵树，反而更难懂。后面每一节都会告诉你「什么时候该停」。</p><h2>对象解构：按名字取值</h2><p>最基本的用法，变量名和对象的键名一致：</p><pre><code class="lang-js"><span class="tok-k">const</span> user = { name: <span class="tok-s">'小明'</span>, age: <span class="tok-n">18</span>, city: <span class="tok-s">'上海'</span> };
+
+<span class="tok-k">const</span> { name, age } = user;
+console.<span class="tok-f">log</span>(name, age);      <span class="tok-c">// 输出: 小明 18</span>
+
+<span class="tok-k">const</span> { email } = user;
+console.<span class="tok-f">log</span>(email);          <span class="tok-c">// 输出: undefined</span>
+
+<span class="tok-k">const</span> { name: userName, age: userAge } = user;
+console.<span class="tok-f">log</span>(userName, userAge);   <span class="tok-c">// 输出: 小明 18</span>
+
+<span class="tok-k">const</span> { city = <span class="tok-s">'未知'</span>, email: mail = <span class="tok-s">'未填写'</span> } = user;
+console.<span class="tok-f">log</span>(city, mail);     <span class="tok-c">// 输出: 上海 未填写</span>
+
+<span class="tok-k">const</span> { nickname = <span class="tok-s">'匿名'</span> } = { nickname: <span class="tok-k">null</span> };
+console.<span class="tok-f">log</span>(nickname);       <span class="tok-c">// 输出: null</span></code></pre><p>这一段里其实塞了四个知识点，逐个拆开看：</p><ul><li><strong>位置无所谓</strong>。解构看的是键名，不是顺序，写 <code>const { age, name } = user</code> 结果一样。它也不会修改 <code>user</code>，只是把值复制到新变量里。</li><li>**键不存在得到 <code>undefined</code>**，不会报错。这比 <code>user.email</code> 稍微安全一点，但也只保护了「这一层少个键」，没保护「上一层不存在」。</li><li><strong>冒号是改名</strong>。<code>{ name: userName }</code> 读作「把 <code>name</code> 这个键的值，装进 <code>userName</code> 这个变量」。注意它和对象字面量的方向正好相反：<code>{ name: userName }</code> 在字面量里是「键叫 <code>name</code>，值是 <code>userName</code> 变量」，在解构里是「从 <code>name</code> 取值，存进 <code>userName</code>」。</li><li>**默认值只在 <code>undefined</code> 时生效**。<code>city</code> 有值，默认值不参与；<code>email</code> 不存在，触发默认值；<code>nickname</code> 是 <code>null</code>，不触发。</li></ul><p>最后一条必须记死：**<code>null</code>、<code>0</code>、<code>''</code>、<code>false</code> 都不会触发默认值**。第 13 章讲可选链时还会再遇到同一个规则，因为它们是同一套设计。</p><p>如果你的接口会用 <code>null</code> 表示「用户明确清空了昵称」，这个行为正是你要的；如果它用 <code>null</code> 表示「没填」，你就得自己再兜一层，写成 <code>nickname ?? '匿名'</code>。</p><p>为什么要改名？最常见的原因是避免冲突：</p><pre><code class="lang-js"><span class="tok-k">const</span> { name } = user;
+<span class="tok-k">const</span> { name: productName } = product;   <span class="tok-c">// 两个 name 不能同时存在</span></code></pre><h3>嵌套解构：注意中间层</h3><pre><code class="lang-js"><span class="tok-k">const</span> order = {
+  id: <span class="tok-s">'A001'</span>,
+  buyer: { name: <span class="tok-s">'小红'</span>, address: { city: <span class="tok-s">'杭州'</span> } },
+};
+
+<span class="tok-k">const</span> { buyer: { address: { city } } } = order;
+console.<span class="tok-f">log</span>(city);   <span class="tok-c">// 输出: 杭州</span>
+
+<span class="tok-k">const</span> user2 = { name: <span class="tok-s">'小明'</span> };
+
+<span class="tok-c">// const { address: { city } } = user2;</span>
+<span class="tok-c">// TypeError: Cannot destructure property 'city' of 'user2.address' as it is undefined.</span>
+
+<span class="tok-k">const</span> { address: { city: city2 } = {} } = user2;
+console.<span class="tok-f">log</span>(city2);   <span class="tok-c">// 输出: undefined</span></code></pre><p>这样写能一层层钻进去，代价是脆弱。<code>= {}</code> 的作用是：<code>address</code> 是 <code>undefined</code> 时，用空对象顶上，于是 <code>city</code> 解构的是 <code>{}</code>，得到 <code>undefined</code>。注意默认值挂在 <code>address</code> 这一层的<strong>大括号后面</strong>，不是挂在 <code>city</code> 后面。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>嵌套解构超过两层，基本就该换成可选链了：</p><p><code>const city = order.buyer?.address?.city ?? '未知';</code></p><p>它更短，也不会因为中间层缺失而抛错。解构适合「结构稳定、我确定它有」的场景；可选链适合「数据可能残缺」的场景。这两种场景在真实项目里都有，别只背一种。</p></div><h3>函数参数解构：最实用的场景</h3><p>这是解构出现频率最高的地方。当函数要接收一个配置对象时：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">createButton</span>({ text, type = <span class="tok-s">'primary'</span>, disabled = <span class="tok-k">false</span> }) {
+  <span class="tok-k">const</span> attr = disabled ? <span class="tok-s">' disabled'</span> : <span class="tok-s">''</span>;
+  <span class="tok-k">return</span> <span class="tok-s">`&lt;button class=&quot;${type}&quot;${attr}&gt;${text}&lt;/button&gt;`</span>;
+}
+
+console.<span class="tok-f">log</span>(<span class="tok-f">createButton</span>({ text: <span class="tok-s">'提交'</span> }));
+<span class="tok-c">// 输出: &lt;button class=&quot;primary&quot;&gt;提交&lt;/button&gt;</span>
+
+<span class="tok-c">// 老写法：函数体里全是 options.xxx</span>
+<span class="tok-k">function</span> <span class="tok-f">createButtonOld</span>(options) {
+  <span class="tok-k">const</span> text = options.text;
+  <span class="tok-k">const</span> type = options.type || <span class="tok-s">'primary'</span>;
+  <span class="tok-k">const</span> disabled = options.disabled || <span class="tok-k">false</span>;
+  <span class="tok-k">return</span> { text, type, disabled };
+}
+
+<span class="tok-c">// createButton();  // TypeError: Cannot destructure property 'text' of 'undefined'</span>
+
+<span class="tok-k">function</span> <span class="tok-f">createButtonSafe</span>({ text = <span class="tok-s">'按钮'</span> } = {}) {
+  <span class="tok-k">return</span> text;
+}
+console.<span class="tok-f">log</span>(<span class="tok-f">createButtonSafe</span>());   <span class="tok-c">// 输出: 按钮</span></code></pre><p>新写法把「我需要哪些字段、默认值是什么」全部写在参数列表里，读函数签名就知道怎么调用，不用再翻函数体。</p><p>但有一个坑：不传参数时会报错。<code>= {}</code> 是给「整个参数」兜底，<code>text = '按钮'</code> 是给「text 这个字段」兜底，两层都要有，少一层就会在某种调用方式下崩。</p><h2>数组解构：按位置取值</h2><p>数组没有键名，所以解构按<strong>位置</strong>对应：</p><pre><code class="lang-js"><span class="tok-k">const</span> rgb = [<span class="tok-n">255</span>, <span class="tok-n">128</span>, <span class="tok-n">0</span>];
+<span class="tok-k">const</span> [red, green, blue] = rgb;
+console.<span class="tok-f">log</span>(green);   <span class="tok-c">// 输出: 128</span>
+
+<span class="tok-k">const</span> [first, , third] = [<span class="tok-s">'a'</span>, <span class="tok-s">'b'</span>, <span class="tok-s">'c'</span>];
+console.<span class="tok-f">log</span>(first, third);   <span class="tok-c">// 输出: a c</span>
+
+<span class="tok-k">let</span> a = <span class="tok-n">1</span>;
+<span class="tok-k">let</span> b = <span class="tok-n">2</span>;
+[a, b] = [b, a];
+console.<span class="tok-f">log</span>(a, b);   <span class="tok-c">// 输出: 2 1</span>
+
+<span class="tok-k">const</span> [best, ...others] = [<span class="tok-n">88</span>, <span class="tok-n">92</span>, <span class="tok-n">76</span>, <span class="tok-n">95</span>];
+console.<span class="tok-f">log</span>(best, others);   <span class="tok-c">// 输出: 88 [92, 76, 95]</span></code></pre><p>四个用法：</p><ul><li>按位置取名，和变量名无关。</li><li>中间那个空位就是一个逗号，表示「这个位置的元素我不要」。处理「函数返回多个值」时很好用，比如正则匹配结果、坐标对。</li><li>交换变量不用临时变量：右边先造出一个新数组 <code>[2, 1]</code>，左边再按位置拆开赋值。</li><li><code>...others</code> 把「剩下的所有元素」收进一个<strong>新数组</strong>。它必须放在最后，写 <code>const [a, ...rest, b]</code> 是语法错误——因为「剩下」没法定义到哪结束。</li></ul><div class="callout callout-warn"><span class="callout-label">注意</span><p>交换变量的那一行如果出现在上一行没有分号的语句后面，会出问题：</p><pre><code class="lang-js"><span class="tok-k">let</span> x = <span class="tok-n">1</span>
+<span class="tok-k">let</span> y = <span class="tok-n">2</span>
+[x, y] = [y, x]   <span class="tok-c">// 报错：被解析成 let y = 2[x, y] = [y, x]</span></code></pre><p>JS 的自动分号插入（ASI）会把 <code>[</code> 当成上一行的延续——「对 <code>2</code> 取下标」。这类错误很难一眼看出来。习惯上，**以 <code>[</code> 或 <code>(</code> 开头的行，前面那一行必须写分号**。这也是很多团队强制写分号的原因之一。</p></div><h2>展开运算符：把一个拆成多个</h2><p>还是这三个点 <code>...</code>，换一个位置，含义就变了。先看数组：</p><pre><code class="lang-js"><span class="tok-k">const</span> a = [<span class="tok-n">1</span>, <span class="tok-n">2</span>];
+<span class="tok-k">const</span> b = [<span class="tok-n">3</span>, <span class="tok-n">4</span>];
+
+<span class="tok-k">const</span> copy = [...a];
+<span class="tok-k">const</span> merged = [...a, ...b, <span class="tok-n">5</span>];
+console.<span class="tok-f">log</span>(copy, merged);     <span class="tok-c">// 输出: [1, 2] [1, 2, 3, 4, 5]</span>
+
+<span class="tok-k">const</span> nums = [<span class="tok-n">3</span>, <span class="tok-n">9</span>, <span class="tok-n">4</span>, <span class="tok-n">7</span>];
+console.<span class="tok-f">log</span>(Math.<span class="tok-f">max</span>(...nums));   <span class="tok-c">// 输出: 9</span>
+console.<span class="tok-f">log</span>(Math.<span class="tok-f">max</span>(nums));      <span class="tok-c">// 输出: NaN</span>
+
+console.<span class="tok-f">log</span>([...<span class="tok-s">'abc'</span>]);          <span class="tok-c">// 输出: ['a', 'b', 'c']</span></code></pre><p><code>copy</code> 那一步很重要。第 2 章讲过，<code>const c = a</code> 只是多了一个名字指向同一个数组，改 <code>c</code> 会影响 <code>a</code>；<code>[...a]</code> 才是真的造了一个新数组。</p><p><code>Math.max</code> 的签名是 <code>Math.max(a, b, c, ...)</code>，它只接收多个参数，不认数组。<code>...nums</code> 等于把数组拆成 <code>3, 9, 4, 7</code> 四个独立参数。这是初学者非常容易踩的一个坑，报错还不明显——不报错，只是返回 <code>NaN</code>。</p><p>字符串也能展开，因为字符串是可迭代的。对象也能用，规则是<strong>后面的覆盖前面的</strong>：</p><pre><code class="lang-js"><span class="tok-k">const</span> defaults = { theme: <span class="tok-s">'light'</span>, fontSize: <span class="tok-n">14</span>, lang: <span class="tok-s">'zh'</span> };
+<span class="tok-k">const</span> options = { theme: <span class="tok-s">'dark'</span> };
+
+<span class="tok-k">const</span> config = { ...defaults, ...options };
+console.<span class="tok-f">log</span>(config);
+<span class="tok-c">// 输出: { theme: 'dark', fontSize: 14, lang: 'zh' }</span>
+
+<span class="tok-k">const</span> original = { name: <span class="tok-s">'小明'</span>, tags: [<span class="tok-s">'a'</span>] };
+<span class="tok-k">const</span> copied = { ...original };
+copied.tags.<span class="tok-f">push</span>(<span class="tok-s">'b'</span>);
+console.<span class="tok-f">log</span>(original.tags);   <span class="tok-c">// 输出: ['a', 'b']，浅拷贝</span></code></pre><p>把顺序反过来，<code>{ ...options, ...defaults }</code>，<code>theme</code> 就会变回 <code>'light'</code>。所以「默认值 + 用户配置」的标准写法永远是<strong>默认值在前，用户配置在后</strong>。</p><p>同时注意最后两行：展开是浅拷贝。第 2 章讲过这一点，但对象展开太常用，值得再提醒一次。嵌套的数组或对象还是共享的，要真正独立用 <code>structuredClone</code>。</p><h2>同一个 <code>...</code>，两种身份</h2><p>初学者最容易糊涂的地方：<code>...</code> 有时叫展开（spread），有时叫剩余（rest），长得一模一样。判断方法只有一个——<strong>看它出现在「接收」的位置还是「提供」的位置</strong>。</p><pre><code class="lang-js"><span class="tok-c">// 函数参数里：接收 → 剩余参数，收集成一个数组</span>
+<span class="tok-k">function</span> <span class="tok-f">sum</span>(...nums) {
+  <span class="tok-k">return</span> nums.<span class="tok-f">reduce</span>((total, n) =&gt; total + n, <span class="tok-n">0</span>);
+}
+console.<span class="tok-f">log</span>(<span class="tok-f">sum</span>(<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>));   <span class="tok-c">// 输出: 6</span>
+
+<span class="tok-c">// 函数调用里：提供 → 展开，把数组拆成多个参数</span>
+<span class="tok-k">const</span> nums2 = [<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>];
+console.<span class="tok-f">log</span>(<span class="tok-f">sum</span>(...nums2));  <span class="tok-c">// 输出: 6</span></code></pre><p>整理成表：</p><div class="table-wrap"><table><thead><tr><th>出现位置</th><th>名字</th><th>作用</th><th>结果</th></tr></thead><tbody><tr><td><code>function f(...args)</code></td><td>剩余参数</td><td>把多余实参收集起来</td><td>数组</td></tr><tr><td><code>f(...arr)</code></td><td>展开</td><td>把数组拆成一个个实参</td><td>多个参数</td></tr><tr><td><code>[...arr, 9]</code></td><td>展开</td><td>拆开后放进新数组</td><td>新数组</td></tr><tr><td><code>const [a, ...rest]</code></td><td>剩余</td><td>收集剩下的元素</td><td>数组</td></tr><tr><td><code>{ ...obj }</code></td><td>展开</td><td>复制自有可枚举属性</td><td>新对象</td></tr></tbody></table></div><p>记法：<strong>左边接收就是收集，右边提供就是拆开</strong>。函数参数、解构的左边都是接收；调用、字面量的右边都是提供。</p><h2>模板字符串</h2><p>第 2 章提过一句，这里正式讲。模板字符串用反引号，最大的作用是插值和多行。</p><pre><code class="lang-js"><span class="tok-k">const</span> name = <span class="tok-s">'小明'</span>;
+<span class="tok-k">const</span> score = <span class="tok-n">92</span>;
+
+<span class="tok-k">const</span> msg = <span class="tok-s">`${name} 这次考了 ${score} 分，${score &gt;= 90 ? '优秀' : '继续加油'}`</span>;
+console.<span class="tok-f">log</span>(msg);   <span class="tok-c">// 输出: 小明 这次考了 92 分，优秀</span>
+
+<span class="tok-k">const</span> html = <span class="tok-s">`
+  &lt;div class=&quot;card&quot;&gt;
+    &lt;h3&gt;${name}&lt;/h3&gt;
+  &lt;/div&gt;
+`</span>;
+
+<span class="tok-k">const</span> fruits = [<span class="tok-s">'苹果'</span>, <span class="tok-s">'香蕉'</span>];
+<span class="tok-k">const</span> list = <span class="tok-s">`&lt;ul&gt;${fruits.map(item =&gt; `</span>&lt;li&gt;${item}&lt;/li&gt;<span class="tok-s">`).join('')}&lt;/ul&gt;`</span>;
+console.<span class="tok-f">log</span>(list);   <span class="tok-c">// 输出: &lt;ul&gt;&lt;li&gt;苹果&lt;/li&gt;&lt;li&gt;香蕉&lt;/li&gt;&lt;/ul&gt;</span></code></pre><p><code>${}</code> 里面可以放任何表达式：变量、运算、三元、函数调用。这让拼字符串从「加号拼接」变成「往句子里填空」。表达式里还能再套模板字符串，做列表拼接时很常见。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>模板字符串会<strong>原样保留换行和缩进</strong>。上面那段 <code>html</code> 的开头有一个换行，每行前面有两个空格，它们都是字符串的一部分。拼 HTML 时通常无所谓，但如果你拿它和另一个字符串做相等比较，就会因为多一个空格而不相等。需要去掉首尾空白，用 <code>.trim()</code>。</p></div><p>还有一种「标签模板（tagged template）」，就是函数名后面直接跟模板字符串，写成 `<code> tag</code>你好，${name}<code> </code><code>。函数收到的是「固定文字数组 + 插值数组」，React 的 </code>styled-components<code>、GraphQL 的 </code>gql` 都靠它实现。日常业务几乎用不到，看到时知道是怎么回事就行。</p><h2>属性简写、方法简写与计算属性名</h2><p>当变量名和键名相同时，可以只写一个：</p><pre><code class="lang-js"><span class="tok-k">const</span> name = <span class="tok-s">'小明'</span>;
+<span class="tok-k">const</span> age = <span class="tok-n">18</span>;
+
+<span class="tok-k">const</span> user = { name, age };
+console.<span class="tok-f">log</span>(user);   <span class="tok-c">// 输出: { name: '小明', age: 18 }</span>
+
+<span class="tok-k">const</span> counter = {
+  count: <span class="tok-n">0</span>,
+  <span class="tok-f">increment</span>() {          <span class="tok-c">// 等价于 increment: function () {}</span>
+    <span class="tok-k">this</span>.count += <span class="tok-n">1</span>;
+    <span class="tok-k">return</span> <span class="tok-k">this</span>.count;
+  },
+};
+console.<span class="tok-f">log</span>(counter.<span class="tok-f">increment</span>());   <span class="tok-c">// 输出: 1</span>
+
+<span class="tok-k">const</span> field = <span class="tok-s">'email'</span>;
+<span class="tok-k">const</span> form = {
+  [field]: <span class="tok-s">'a@b.com'</span>,
+  [<span class="tok-s">`${field}Verified`</span>]: <span class="tok-k">false</span>,
+};
+console.<span class="tok-f">log</span>(form);
+<span class="tok-c">// 输出: { email: 'a@b.com', emailVerified: false }</span></code></pre><p>属性简写不是什么魔法，就是 <code>{ name: name, age: age }</code> 的缩写。</p><p>方法简写和箭头函数<strong>不等价</strong>：方法简写里的 <code>this</code> 指向调用它的对象，箭头函数的 <code>this</code> 来自外层。第 10 章讲过 <code>this</code>，忘了的话回去看一眼，这里不重复。</p><p>计算属性名（computed property）让你用变量的值当键。方括号里可以放任何表达式，做表单、做「根据用户角色生成不同字段」时很有用。不写方括号的话，<code>field: ...</code> 会得到一个真的叫 <code>field</code> 的键，这是常见笔误。</p><h2>默认参数：<code>undefined</code> 才触发</h2><p>函数的默认参数（default parameter）和解构默认值是同一套规则：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">greet</span>(name = <span class="tok-s">'陌生人'</span>) {
+  <span class="tok-k">return</span> <span class="tok-s">`你好，${name}`</span>;
+}
+
+console.<span class="tok-f">log</span>(<span class="tok-f">greet</span>());            <span class="tok-c">// 输出: 你好，陌生人</span>
+console.<span class="tok-f">log</span>(<span class="tok-f">greet</span>(<span class="tok-k">undefined</span>));   <span class="tok-c">// 输出: 你好，陌生人</span>
+console.<span class="tok-f">log</span>(<span class="tok-f">greet</span>(<span class="tok-k">null</span>));        <span class="tok-c">// 输出: 你好，null</span>
+console.<span class="tok-f">log</span>(<span class="tok-f">greet</span>(<span class="tok-s">''</span>));          <span class="tok-c">// 输出: 你好，</span>
+
+<span class="tok-k">function</span> <span class="tok-f">greetOld</span>(name) {
+  name = name || <span class="tok-s">'陌生人'</span>;
+  <span class="tok-k">return</span> <span class="tok-s">`你好，${name}`</span>;
+}
+console.<span class="tok-f">log</span>(<span class="tok-f">greetOld</span>(<span class="tok-s">''</span>));       <span class="tok-c">// 输出: 你好，陌生人</span></code></pre><p>四个调用的结果值得逐个看：</p><ul><li>不传参，<code>name</code> 是 <code>undefined</code>，触发默认值。</li><li>显式传 <code>undefined</code>，<strong>同样触发</strong>默认值。</li><li>传 <code>null</code>，不触发，<code>null</code> 被原样使用。</li><li>传空字符串，不触发，只是拼出来后面什么都没有。</li></ul><p>对比老写法 <code>name = name || '陌生人'</code>，差别就出来了：<code>''</code> 被吃掉了，换成了默认值。如果业务上「空字符串」是合法输入（比如用户清空了昵称），老写法会悄悄换成默认值，新写法不会。这就是为什么现代代码更愿意用默认参数而不是 <code>||</code>。</p><p><code>let</code> 和 <code>const</code> 第 2 章讲得很细了，这里只留一句：**默认 <code>const</code>，需要重新赋值才用 <code>let</code>，不要用 <code>var</code>**。这一章后面的例子会一直遵守这个习惯。</p><h2>可选链 <code>?.</code> 与空值合并 <code>??</code></h2><p>这两个运算符是处理「数据可能不存在」的标配，几乎每个项目都有。</p><h3>可选链：遇到 null 就停下</h3><pre><code class="lang-js"><span class="tok-k">const</span> user = {
+  name: <span class="tok-s">'小明'</span>,
+  profile: { city: <span class="tok-s">'上海'</span> },
+};
+
+console.<span class="tok-f">log</span>(user.profile?.city);   <span class="tok-c">// 输出: 上海</span>
+console.<span class="tok-f">log</span>(user.address?.city);   <span class="tok-c">// 输出: undefined</span>
+
+<span class="tok-k">const</span> list = <span class="tok-k">null</span>;
+console.<span class="tok-f">log</span>(list?.[<span class="tok-n">0</span>]);            <span class="tok-c">// 输出: undefined</span>
+
+<span class="tok-k">const</span> obj = { <span class="tok-f">save</span>() { <span class="tok-k">return</span> <span class="tok-s">'已保存'</span>; } };
+console.<span class="tok-f">log</span>(obj.save?.());         <span class="tok-c">// 输出: 已保存</span>
+console.<span class="tok-f">log</span>(obj.remove?.());       <span class="tok-c">// 输出: undefined</span>
+
+<span class="tok-c">// console.log(user.address.city);</span>
+<span class="tok-c">// TypeError: Cannot read properties of undefined (reading 'city')</span></code></pre><p>三种写法对应三种访问：<code>?.</code> 取属性、<code>?.[]</code> 取下标、<code>?.()</code> 调函数。共同点是：**左边是 <code>null</code> 或 <code>undefined</code> 时，整个表达式直接返回 <code>undefined</code>，后面的访问不再执行**。不加问号的那一行，就是线上最常见的报错之一：数据少一层，页面就白。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>可选链只对 <code>null</code> 和 <code>undefined</code> 短路。<code>0</code>、<code>''</code>、<code>false</code> 都会继续往下走，这是对的，因为它们本身是合法值。</p><p>但它<strong>不会吞掉别的错误</strong>：<code>user.profile?.city.toUpperCase()</code> 里如果 <code>city</code> 不存在，访问 <code>.toUpperCase</code> 时照样报错。可选链要写在真正可能为空的那一层。</p></div><h3>空值合并：只认 null 和 undefined</h3><pre><code class="lang-js"><span class="tok-k">const</span> count = <span class="tok-n">0</span>;
+<span class="tok-k">const</span> text = <span class="tok-s">''</span>;
+
+console.<span class="tok-f">log</span>(count || <span class="tok-n">10</span>);     <span class="tok-c">// 输出: 10</span>
+console.<span class="tok-f">log</span>(count ?? <span class="tok-n">10</span>);     <span class="tok-c">// 输出: 0</span>
+console.<span class="tok-f">log</span>(text || <span class="tok-s">'默认'</span>);   <span class="tok-c">// 输出: 默认</span>
+console.<span class="tok-f">log</span>(text ?? <span class="tok-s">'默认'</span>);   <span class="tok-c">// 输出: ''（空字符串）</span>
+
+<span class="tok-k">const</span> config = { page: <span class="tok-n">0</span> };
+console.<span class="tok-f">log</span>(config.page || <span class="tok-n">1</span>);   <span class="tok-c">// 输出: 1</span>
+console.<span class="tok-f">log</span>(config.page ?? <span class="tok-n">1</span>);   <span class="tok-c">// 输出: 0</span></code></pre><p><code>||</code> 判断的是「真假值」，<code>0</code>、<code>''</code>、<code>false</code>、<code>NaN</code> 全算假，都会被替换掉。<code>??</code> 判断的是「是不是空」，只有 <code>null</code> 和 <code>undefined</code> 会被替换。</p><div class="table-wrap"><table><thead><tr><th>值</th><th>用逻辑或取默认</th><th>用空值合并取默认</th></tr></thead><tbody><tr><td><code>0</code></td><td>被替换成默认值</td><td>保留 <code>0</code></td></tr><tr><td>空字符串</td><td>被替换</td><td>保留空字符串</td></tr><tr><td><code>false</code></td><td>被替换</td><td>保留 <code>false</code></td></tr><tr><td><code>NaN</code></td><td>被替换</td><td>保留 <code>NaN</code></td></tr><tr><td><code>null</code></td><td>被替换</td><td>被替换</td></tr><tr><td><code>undefined</code></td><td>被替换</td><td>被替换</td></tr></tbody></table></div><p>真实场景：配置里的 <code>page</code> 默认是 1，但用户可以传 0 表示「从第 0 条开始」。用 <code>||</code> 会把合法的 0 换成 1，分页就错了；用 <code>??</code> 才保留 0。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p><code>??</code> 不能和 <code>||</code>、<code>&amp;&amp;</code> 直接混用，<code>a ?? b || c</code> 是语法错误。要么加括号 <code>(a ?? b) || c</code>，要么分成两步。这条规则存在的意义就是逼你想清楚优先级，别嫌麻烦。</p></div><h2>Set 与 Map</h2><p>数组和对象用得最多，但有两种需求它们做起来别扭：<strong>去重</strong>和<strong>用对象当键</strong>。</p><h3>Set：不重复的集合</h3><pre><code class="lang-js"><span class="tok-k">const</span> tags = [<span class="tok-s">'js'</span>, <span class="tok-s">'node'</span>, <span class="tok-s">'js'</span>, <span class="tok-s">'ts'</span>, <span class="tok-s">'node'</span>];
+<span class="tok-k">const</span> unique = [...<span class="tok-k">new</span> <span class="tok-f">Set</span>(tags)];
+console.<span class="tok-f">log</span>(unique);              <span class="tok-c">// 输出: ['js', 'node', 'ts']</span>
+
+<span class="tok-k">const</span> <span class="tok-k">set</span> = <span class="tok-k">new</span> <span class="tok-f">Set</span>([<span class="tok-s">'a'</span>, <span class="tok-s">'b'</span>]);
+<span class="tok-k">set</span>.<span class="tok-f">add</span>(<span class="tok-s">'c'</span>);
+console.<span class="tok-f">log</span>(<span class="tok-k">set</span>.<span class="tok-f">has</span>(<span class="tok-s">'b'</span>));        <span class="tok-c">// 输出: true</span>
+<span class="tok-k">set</span>.<span class="tok-k">delete</span>(<span class="tok-s">'a'</span>);
+console.<span class="tok-f">log</span>(<span class="tok-k">set</span>.size, [...<span class="tok-k">set</span>]);  <span class="tok-c">// 输出: 2 ['b', 'c']</span>
+
+console.<span class="tok-f">log</span>(<span class="tok-k">new</span> <span class="tok-f">Set</span>([NaN, NaN]).size);            <span class="tok-c">// 输出: 1</span>
+console.<span class="tok-f">log</span>(<span class="tok-k">new</span> <span class="tok-f">Set</span>([{ a: <span class="tok-n">1</span> }, { a: <span class="tok-n">1</span> }]).size);  <span class="tok-c">// 输出: 2</span></code></pre><p><code>new Set(数组)</code> 会自动丢掉重复项，再展开回数组，这是最短的去重写法。<code>Set</code> 没有下标，不能用 <code>set[0]</code>，要取值就展开成数组，或者用 <code>for...of</code> 遍历。判断「存在吗」用它比数组快得多：<code>Set.has</code> 是常数时间，数组的 <code>includes</code> 要一个个比。</p><p>最后两行是两个容易误解的细节。<code>Set</code> 判断重复用的是「同值零」比较，<code>NaN</code> 等于自己，所以只剩一个；但对象比的是<strong>引用</strong>，内容一样也没用，所以是两个。这和 <code>===</code> 的行为一致（第 2 章讲过）。</p><h3>Map：键可以是任何东西</h3><p>普通对象的键会被强制转成字符串：</p><pre><code class="lang-js"><span class="tok-k">const</span> o = {};
+o[<span class="tok-n">1</span>] = <span class="tok-s">'a'</span>;
+o[<span class="tok-k">true</span>] = <span class="tok-s">'b'</span>;
+console.<span class="tok-f">log</span>(Object.<span class="tok-f">keys</span>(o));   <span class="tok-c">// 输出: ['1', 'true']</span>
+
+<span class="tok-k">const</span> map = <span class="tok-k">new</span> <span class="tok-f">Map</span>();
+<span class="tok-k">const</span> key = { id: <span class="tok-n">1</span> };
+
+map.<span class="tok-k">set</span>(key, <span class="tok-s">'对象作键的值'</span>);
+map.<span class="tok-k">set</span>(<span class="tok-s">'name'</span>, <span class="tok-s">'小明'</span>);
+
+console.<span class="tok-f">log</span>(map.<span class="tok-k">get</span>(key));         <span class="tok-c">// 输出: 对象作键的值</span>
+console.<span class="tok-f">log</span>(map.<span class="tok-k">get</span>({ id: <span class="tok-n">1</span> }));   <span class="tok-c">// 输出: undefined，不是同一个对象</span>
+console.<span class="tok-f">log</span>(map.size);             <span class="tok-c">// 输出: 2</span>
+
+<span class="tok-k">for</span> (<span class="tok-k">const</span> [k, v] <span class="tok-k">of</span> map) {
+  console.<span class="tok-f">log</span>(k, v);
+}
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// { id: 1 } 对象作键的值</span>
+<span class="tok-c">// name 小明</span></code></pre><p>数字 <code>1</code> 变成了字符串 <code>'1'</code>。如果你要用对象、函数、数字当键，并且不想被转换，就用 <code>Map</code>。</p><p><code>map.get({ id: 1 })</code> 拿不到值，因为那是新建的另一个对象。这一点和 <code>Set</code> 一样：<strong>对象按引用比较</strong>。所以用对象当键时，一定要把那个对象存好，不能每次现造一个。</p><p><code>Map</code> 会保留插入顺序，<code>size</code> 直接拿数量，这两点普通对象都给不了（对象取数量要 <code>Object.keys(obj).length</code>，顺序在数字键上还会被重排）。</p><h3>怎么选</h3><div class="table-wrap"><table><thead><tr><th>需求</th><th>用什么</th><th>原因</th></tr></thead><tbody><tr><td>数组去重</td><td><code>Set</code></td><td>自动保证唯一</td></tr><tr><td>频繁判断「存在吗」</td><td><code>Set</code></td><td><code>has</code> 比数组 <code>includes</code> 快</td></tr><tr><td>键是对象或数字</td><td><code>Map</code></td><td>普通对象会把键转成字符串</td></tr><tr><td>频繁增删、要顺序、要数量</td><td><code>Map</code></td><td>保留插入顺序，<code>size</code> 直接读</td></tr><tr><td>按下标访问、要 <code>map</code> / <code>filter</code></td><td>数组</td><td><code>Set</code> / <code>Map</code> 没有这些方法</td></tr><tr><td>存一条结构化数据、要转 JSON</td><td>普通对象</td><td>字面量方便，<code>JSON.stringify</code> 友好</td></tr></tbody></table></div><p>一句话：<code>Set</code> 管「有没有」，<code>Map</code> 管「谁对应谁」，数组管「一串有序的东西」，对象管「一条有字段的记录」。别为了显得高级，把所有东西都塞进 <code>Map</code>。</p><h2><code>for...of</code> 与「可迭代」</h2><p><code>for...of</code> 用来遍历「可迭代对象（iterable）」的值：</p><pre><code class="lang-js"><span class="tok-k">const</span> fruits = [<span class="tok-s">'apple'</span>, <span class="tok-s">'banana'</span>];
+<span class="tok-k">for</span> (<span class="tok-k">const</span> fruit <span class="tok-k">of</span> fruits) {
+  console.<span class="tok-f">log</span>(fruit);
+}
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// apple</span>
+<span class="tok-c">// banana</span>
+
+<span class="tok-k">const</span> user = { name: <span class="tok-s">'小明'</span>, age: <span class="tok-n">18</span> };
+<span class="tok-c">// for (const v of user) {}   // TypeError: user is not iterable</span>
+
+<span class="tok-k">for</span> (<span class="tok-k">const</span> key <span class="tok-k">of</span> Object.<span class="tok-f">keys</span>(user)) {
+  console.<span class="tok-f">log</span>(key, user[key]);
+}
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// name 小明</span>
+<span class="tok-c">// age 18</span>
+
+<span class="tok-k">for</span> (<span class="tok-k">const</span> key <span class="tok-k">in</span> user) {
+  console.<span class="tok-f">log</span>(key);   <span class="tok-c">// 输出: name、age</span>
+}</code></pre><p>它和 <code>for</code> 循环的区别是：不用管下标，不会越界，也不会因为 <code>length</code> 写错而多跑一次。</p><p>另外，<code>for...of</code> 支持 <code>break</code> 和 <code>continue</code>，而数组的 <code>forEach</code> 不支持——想中途跳出循环时，只能用它或普通 <code>for</code>。这个差别在「找到第一个符合条件的就停下」这类需求里很实际。</p><p>但普通对象不能用。原因在于「可迭代」是一个约定：对象上要有一个叫 <code>Symbol.iterator</code> 的方法，<code>for...of</code> 靠调用它来一个个取值。数组、字符串、<code>Set</code>、<code>Map</code>、<code>NodeList</code> 都实现了这个约定，普通对象没有。</p><p>第 15 章会用到这一点：<code>document.querySelectorAll</code> 返回的 <code>NodeList</code> 是可迭代的，所以能直接 <code>for...of</code>，也能用 <code>[...]</code> 转成数组。</p><p>那 <code>for...in</code> 呢？它遍历的是<strong>键名</strong>，而且会顺着原型链把继承来的可枚举属性也带上，所以业务代码里基本不用。看到别人用 <code>for...in</code> 遍历对象，先怀疑一下是不是想要 <code>Object.keys</code>。</p><h2><code>Array.from</code> 与 <code>Object.entries</code> 配合解构</h2><p><code>Array.from</code> 把「类数组或可迭代的东西」转成真正的数组：</p><pre><code class="lang-js">console.<span class="tok-f">log</span>(Array.<span class="tok-k">from</span>(<span class="tok-s">'abc'</span>));   <span class="tok-c">// 输出: ['a', 'b', 'c']</span>
+console.<span class="tok-f">log</span>(Array.<span class="tok-k">from</span>({ length: <span class="tok-n">3</span> }, (_, i) =&gt; i));   <span class="tok-c">// 输出: [0, 1, 2]</span>
+
+<span class="tok-k">const</span> prices = { apple: <span class="tok-n">5</span>, banana: <span class="tok-n">3</span> };
+
+<span class="tok-k">for</span> (<span class="tok-k">const</span> [name, price] <span class="tok-k">of</span> Object.<span class="tok-f">entries</span>(prices)) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">`${name}: ${price} 元`</span>);
+}
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// apple: 5 元</span>
+<span class="tok-c">// banana: 3 元</span>
+
+<span class="tok-k">const</span> doubled = Object.<span class="tok-f">fromEntries</span>(
+  Object.<span class="tok-f">entries</span>(prices).<span class="tok-f">map</span>(([key, value]) =&gt; [key, value * <span class="tok-n">2</span>])
+);
+console.<span class="tok-f">log</span>(doubled);   <span class="tok-c">// 输出: { apple: 10, banana: 6 }</span></code></pre><p><code>Array.from</code> 的第二个参数是映射函数，<code>_</code> 表示「第一个参数（当前值）我不用」，<code>i</code> 是下标，这个写法常用来快速造一个 <code>[0, 1, 2, ...]</code> 的序列。</p><p><code>Object.entries</code> 把对象变成 <code>[键, 值]</code> 的数组，再配合解构，遍历对象就非常顺。它还能和 <code>Object.fromEntries</code> 配对，做「对每个值加工后再变回对象」。</p><p>这一组操作在真实项目里出现频率很高：统计、过滤配置、批量改价格，都是这个套路。第 17 章做项目时会再见到。</p><h2>常见误区清单</h2><p>这张表建议先扫一遍，遇到对应写法再回来查。真正要记的是「为什么」那一列——知道原因，下次遇到变形也能自己推出来。</p><div class="table-wrap"><table><thead><tr><th>写法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td><code>const { a = 1 } = { a: null }</code></td><td><code>a</code> 是 <code>null</code></td><td>默认值只认 <code>undefined</code></td></tr><tr><td><code>const { a: { b } } = {}</code></td><td>抛 <code>TypeError</code></td><td>中间层不存在，要在 <code>a</code> 这层写 <code>= {}</code></td></tr><tr><td>上一行不写分号就写 <code>[a, b] = [b, a]</code></td><td>报错或结果异常</td><td>被解析成对上一行结果取下标</td></tr><tr><td><code>const [a, ...rest, b] = arr</code></td><td><code>SyntaxError</code></td><td>剩余元素必须放最后</td></tr><tr><td><code>Math.max([1, 5, 3])</code></td><td><code>NaN</code></td><td>它要多个参数，不接收数组</td></tr><tr><td><code>{ ...a, ...b }</code> 有同名键</td><td>后者覆盖前者</td><td>按书写顺序合并</td></tr><tr><td>展开对象后修改嵌套属性</td><td>原对象也变</td><td>展开是浅拷贝</td></tr><tr><td><code>0</code> 用逻辑或取默认值</td><td>得到默认值</td><td><code>0</code> 是假值，要保留它得用 <code>??</code></td></tr><tr><td><code>for (const v of { a: 1 })</code></td><td><code>TypeError</code></td><td>普通对象没有迭代器</td></tr><tr><td><code>new Set([{ a: 1 }, { a: 1 }])</code> 的 <code>size</code></td><td><code>2</code></td><td>对象按引用比较</td></tr><tr><td>解构参数不写 <code>= {}</code> 又不传参</td><td><code>TypeError</code></td><td>对 <code>undefined</code> 做了解构</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>下面这段输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> { a = <span class="tok-n">1</span>, b = <span class="tok-n">2</span> } = { a: <span class="tok-k">null</span> };
+console.<span class="tok-f">log</span>(a, b);</code></pre><p>输出 <code>null 2</code>。<code>a</code> 的值是 <code>null</code>，不触发默认值；<code>b</code> 的键不存在，值是 <code>undefined</code>，触发默认值。</p></div></details><details class="quiz"><summary>下面这段输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> [x, , y, ...rest] = [<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>, <span class="tok-n">4</span>, <span class="tok-n">5</span>];
+console.<span class="tok-f">log</span>(y, rest);</code></pre><p>输出 <code>3 [4, 5]</code>。第二个位置用空逗号跳过，<code>y</code> 取到 3，<code>rest</code> 收走剩下的 4 和 5。</p></div></details><details class="quiz"><summary><code>Math.max(...[2, 8, 5])</code> 和 <code>Math.max([2, 8, 5])</code> 结果分别是什么？</summary><div class="quiz-body"><p>分别是 <code>8</code> 和 <code>NaN</code>。前者把数组展开成三个参数；后者把整个数组当成一个参数，无法转成数字，得到 <code>NaN</code>。</p></div></details><details class="quiz"><summary>下面这段输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> count = <span class="tok-n">0</span>;
+<span class="tok-k">const</span> a = count || <span class="tok-n">5</span>;
+<span class="tok-k">const</span> b = count ?? <span class="tok-n">5</span>;
+console.<span class="tok-f">log</span>(a, b);</code></pre><p>输出 <code>5 0</code>。<code>||</code> 把 <code>0</code> 当假值替换掉了；<code>??</code> 只替换 <code>null</code> 和 <code>undefined</code>，<code>0</code> 被保留。</p></div></details><details class="quiz"><summary><code>[...new Set('banana')].join('')</code> 输出什么？</summary><div class="quiz-body"><p>输出 <code>'ban'</code>。字符串被展开成单个字符，<code>Set</code> 去重后剩 <code>b</code>、<code>a</code>、<code>n</code>，再拼回字符串。</p></div></details><details class="quiz"><summary>下面这段输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> obj = { a: <span class="tok-n">1</span> };
+<span class="tok-k">const</span> copy = { ...obj, a: <span class="tok-n">2</span> };
+console.<span class="tok-f">log</span>(obj.a, copy.a);</code></pre><p>输出 <code>1 2</code>。展开创建了新对象，后面的 <code>a: 2</code> 覆盖了展开进来的 <code>a</code>，原对象不受影响。</p></div></details><details class="quiz"><summary>为什么 <code>for (const item of { name: 'x' })</code> 会报错？怎么改？</summary><div class="quiz-body"><p>普通对象没有实现迭代器，<code>for...of</code> 只接受可迭代对象。改成 <code>for (const key of Object.keys(obj))</code>，或者用 <code>Object.entries</code> 拿键值对。</p></div></details><details class="quiz"><summary>默认参数能引用前面的参数吗？<code>function make({ a = 1, b = a + 1 } = {})</code> 调用 <code>make()</code> 返回什么？</summary><div class="quiz-body"><p>能。默认参数的表达式在调用时按从左到右求值，<code>b</code> 可以使用已经初始化的 <code>a</code>，所以返回 <code>[1, 2]</code>。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>写 <code>formatUser(response)</code>，从 <code>{ data: { user: { id, name, profile } } }</code> 里用解构取出 <code>id</code>、<code>name</code>、<code>profile.city</code>，<code>city</code> 缺失时返回 <code>'未知'</code>，最后返回一行字符串。 验收：<code>formatUser({ data: { user: { id: 1, name: '小明' } } })</code> 返回 <code>1 小明 未知</code>；<code>data</code> 整个缺失时也不抛错，返回 <code>null</code>。</li></ol><ol><li>用 <code>Set</code> 写三个函数：<code>unique(arr)</code> 去重、<code>intersect(a, b)</code> 求交集、<code>union(a, b)</code> 求并集。 验收：<code>unique([1, 1, 2])</code> 返回 <code>[1, 2]</code>；<code>intersect([1, 2, 3], [2, 3, 4])</code> 返回 <code>[2, 3]</code>；三个函数都不修改传入的数组。</li></ol><ol><li>写一个 <code>sumByCategory(orders)</code>，输入 <code>[{ category: 'food', price: 30 }, ...]</code>，用 <code>Object.entries</code>、解构和 <code>for...of</code> 输出每个分类的总额。 验收：同类订单正确累加，输出顺序与首次出现顺序一致。</li></ol><p><strong>进阶</strong></p><ol><li>写 <code>mergeConfig(defaults, userConfig)</code>，合并两份配置。要求用户传 <code>theme: null</code> 时表示「明确清空」，不能被默认值覆盖；用户传 <code>page: 0</code> 时保留 <code>0</code>。 验收：<code>mergeConfig({ theme: 'light', page: 1 }, { theme: null })</code> 得到 <code>theme</code> 为 <code>null</code>；传入 <code>page: 0</code> 时结果里是 <code>0</code> 而不是 <code>1</code>。</li></ol><ol><li>把一段老式代码改成现代写法：用 <code>for</code> 循环加下标拼一张 HTML 商品列表，改成 <code>Object.entries</code> + 数组解构 + 模板字符串，并且用 <code>Set</code> 对商品标签去重。 验收：输出与原来完全一致；代码里不出现 <code>for (let i = 0; ...)</code>；标签重复时结果里只出现一次。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>这一章是「语法工具包」，真正用起来是在后面：第 13 章的 Promise 结果常用数组解构接，第 15 章会把 <code>querySelectorAll</code> 的结果展开成数组再 <code>map</code>，第 16 章处理接口返回的嵌套对象时，可选链和 <code>??</code> 几乎每行都有。</p><p>不用背表格。先做到两件事：看到 <code>{ a = 1 }</code> 能立刻想到「只认 undefined」，看到 <code>...</code> 能分清是收集还是展开。剩下的会在项目里自然熟练。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="11.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="13.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"12","title":"ES6+ 必会语法"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

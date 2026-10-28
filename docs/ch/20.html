@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>下一步：TypeScript、Node 与小程序 · JS 通勤课</title>
+<meta name="description" content="学完 JS 之后往哪走：用 TypeScript 提前发现错误、用 Node 写第一个接口、用小程序把作品装进微信，并给出三个月路线与项目清单。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">下一步：TypeScript、Node 与小程序</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 20 章 · 约 42 分钟</div>
+    <h1>下一步：TypeScript、Node 与小程序</h1>
+    <p class="lede">学完 JS 之后往哪走：用 TypeScript 提前发现错误、用 Node 写第一个接口、用小程序把作品装进微信，并给出三个月路线与项目清单。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>第 20 章走到这里，你已经能独立做出一个能上线的静态应用。但「会 JS」只是起点，真正的工作方向还有三条：把代码写得更可靠、让代码跑在服务器上、让代码跑进微信里。</p><p>这一章不教你全部语法，而是给你三张地图：每张图标出「先学什么、暂时不用学什么、学到什么程度算入门」。</p><p>学完你能给自己排出一条三个月的路线，也知道遇到问题时去哪里查、怎么问。</p></blockquote><h2>为什么需要它</h2><p>假设朋友让你做一个「活动报名表」：收集姓名和电话、导出名单、别人不能乱改。你现在的工具箱是三样：DOM 画界面、<code>localStorage</code> 存数据、<code>fetch</code> 调接口。</p><p>界面你能做出来，但会卡在三个地方：</p><ul><li>报名数据存在每个访客自己的浏览器里，你一条也收不到</li><li>没有登录，任何人打开都能删掉别人的报名</li><li>想在微信里传播，网页分享出去后打开得没有那么顺</li></ul><p>也就是说，<strong>静态页面不等于产品</strong>。产品需要有人替你保管数据、判断谁能改、还需要一个用户已经装好的入口。</p><p>这正好对应三个方向：TypeScript 让代码在变大后仍然可靠，Node.js 让你能写那个「保管数据」的服务，小程序给你另一个客户端。先把手里已有的东西盘一遍：</p><div class="table-wrap"><table><thead><tr><th>层面</th><th>已经会</th><th>对应章节</th><th>还缺</th></tr></thead><tbody><tr><td>语言</td><td>变量、类型、函数、数组对象、闭包、<code>this</code>、class、Promise</td><td>2 到 13</td><td>类型系统、测试</td></tr><tr><td>浏览器</td><td>DOM、事件、存储、<code>fetch</code>、错误调试</td><td>15 到 17</td><td>复杂状态管理、性能</td></tr><tr><td>工程</td><td>模块、npm、Vite、Git、部署</td><td>14、19</td><td>自动化检查、CI</td></tr><tr><td>服务端</td><td>只知道前端怎么调接口</td><td>16</td><td>写接口、数据库、鉴权</td></tr><tr><td>小程序</td><td>还没接触</td><td>—</td><td>运行时差异、审核发布</td></tr></tbody></table></div><p>给自己做一次自查，任何一条含糊都建议回看对应章节：</p><ul><li>能解释 <code>let</code>、<code>const</code>、<code>var</code> 的区别，以及暂时性死区（第 2、9 章）</li><li>能手写 <code>map</code>、<code>filter</code>、<code>reduce</code>，说清返回的是新数组还是原数组（第 6 章）</li><li>能说清闭包是什么、<code>this</code> 由调用方式决定（第 9、10 章）</li><li>能读写 Promise 链和 <code>async/await</code>，知道微任务的执行顺序（第 13 章）</li><li>能用原生 DOM 独立写出第 18 章的待办，并部署上线（第 18、19 章）</li></ul><p>五条都过了，再往下走。顺序建议是 <strong>TypeScript → Node → 小程序</strong>：TS 立刻能用在现有项目上，Node 补的是服务端思维，小程序是换一个运行时的前端，放在最后最容易上手。</p><h2>TypeScript：把错误提前到写代码时</h2><p>先看一段很普通的 JS：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">formatPrice</span>(price) {
+  <span class="tok-k">return</span> <span class="tok-s">'¥'</span> + price.<span class="tok-f">toFixed</span>(<span class="tok-n">2</span>);
+}
+
+<span class="tok-f">formatPrice</span>(<span class="tok-n">19.9</span>);    <span class="tok-c">// 输出: '¥19.90'</span>
+<span class="tok-f">formatPrice</span>(<span class="tok-s">'19.9'</span>);  <span class="tok-c">// TypeError: price.toFixed is not a function</span></code></pre><p>第二行报错，是因为字符串没有 <code>toFixed</code>。问题在于：这段代码只有<strong>真的执行到这一行</strong>才会暴露错误。如果它藏在「用户点了某个不常用的支付方式」的分支里，测试没走到，上线后才会炸。</p><p>TypeScript（简称 TS）在 JS 上加了一层类型标注。它不是新语言，是 JS 的超集：</p><pre><code class="lang-ts"><span class="tok-k">function</span> <span class="tok-f">formatPrice</span>(price: number): string {
+  <span class="tok-k">return</span> <span class="tok-s">'¥'</span> + price.<span class="tok-f">toFixed</span>(<span class="tok-n">2</span>);
+}
+
+<span class="tok-f">formatPrice</span>(<span class="tok-s">'19.9'</span>);</code></pre><p>这段代码根本不用运行，编辑器在你写下 <code>'19.9'</code> 的瞬间就标红，提示 <code>Argument of type 'string' is not assignable to parameter of type 'number'.</code>。类型在编译后会被完全抹掉，运行时还是普通 JS，所以 TS 不改变程序行为，只把「运行时才发现的错误」提前到「写代码时」。</p><p>对自学者来说，它最大的价值不是「显得专业」，而是<strong>编辑器会告诉你下一步该写什么</strong>。输入 <code>todo.</code> 之后弹出的属性列表，比任何文档都快。</p><h3>类型注解与推断</h3><pre><code class="lang-ts"><span class="tok-k">let</span> name: string = <span class="tok-s">'小明'</span>;          <span class="tok-c">// 手写注解</span>
+<span class="tok-k">let</span> age = <span class="tok-n">18</span>;                       <span class="tok-c">// 推断为 number，不用写</span>
+<span class="tok-k">const</span> ids: number[] = [<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>];    <span class="tok-c">// 数字数组</span>
+<span class="tok-k">const</span> user: { name: string; age: number } = { name: <span class="tok-s">'小明'</span>, age: <span class="tok-n">18</span> };</code></pre><p>大多数局部变量不需要写类型，TS 能从右边的值推断出来。真正值得手写的是两处：</p><ul><li><strong>函数参数</strong>：TS 猜不到调用方会传什么，必须由你声明</li><li><strong>公共函数的返回值</strong>：别人调用时不用进函数体就能知道拿到什么</li></ul><pre><code class="lang-ts"><span class="tok-k">function</span> <span class="tok-f">total</span>(prices: number[]): number {
+  <span class="tok-k">return</span> prices.<span class="tok-f">reduce</span>((sum, price) =&gt; sum + price, <span class="tok-n">0</span>);
+}</code></pre><p>不写参数类型，TS 会把 <code>price</code> 当成 <code>any</code>，等于放弃检查；不写返回类型，改坏实现时调用方也发现不了。</p><h3>interface 与 type</h3><p>描述一个对象长什么样，有两种写法：</p><pre><code class="lang-ts">interface Todo {
+  id: number;
+  text: string;
+  done: boolean;
+  createdAt?: number;      <span class="tok-c">// 问号表示可选</span>
+}
+
+type Filter = <span class="tok-s">'all'</span> | <span class="tok-s">'active'</span> | <span class="tok-s">'done'</span>;
+
+<span class="tok-k">const</span> filter: Filter = <span class="tok-s">'all'</span>;
+<span class="tok-c">// const bad: Filter = 'finished';   // 编译报错</span></code></pre><div class="table-wrap"><table><thead><tr><th>维度</th><th><code>interface</code></th><th><code>type</code></th></tr></thead><tbody><tr><td>描述对象结构</td><td>可以</td><td>可以</td></tr><tr><td>联合类型</td><td>不行</td><td>可以，如 <code>'a'</code> 或 <code>'b'</code></td></tr><tr><td>交叉合并</td><td><code>extends</code></td><td><code>&amp;</code></td></tr><tr><td>声明合并</td><td>支持，同名会自动合并</td><td>不支持</td></tr><tr><td>适合</td><td>对象、接口返回、公共类型</td><td>联合、函数类型、工具类型</td></tr></tbody></table></div><p>选择规则不用纠结：**描述对象用 <code>interface</code>，其他用 <code>type</code>**。两者在大多数场景可以互换，团队里统一一种就行，别在同一个文件里来回换。</p><p><code>createdAt?: number</code> 表示这个属性可以没有。读取时它的类型是 <code>number | undefined</code>，TS 会强迫你先判断再使用，这正是第 2 章讲的 <code>undefined</code> 在类型层面的体现。</p><h3>联合类型与收窄</h3><pre><code class="lang-ts">type Filter = <span class="tok-s">'all'</span> | <span class="tok-s">'active'</span> | <span class="tok-s">'done'</span>;
+
+<span class="tok-k">function</span> <span class="tok-f">match</span>(todo: Todo, filter: Filter): boolean {
+  <span class="tok-k">if</span> (filter === <span class="tok-s">'active'</span>) <span class="tok-k">return</span> !todo.done;
+  <span class="tok-k">if</span> (filter === <span class="tok-s">'done'</span>) <span class="tok-k">return</span> todo.done;
+  <span class="tok-k">return</span> <span class="tok-k">true</span>;
+}</code></pre><p><code>filter</code> 只能是这三个字符串之一，写成 <code>'finished'</code> 立刻报错。这比运行时才发现「筛选按钮点了没反应」早得多。</p><p>在 <code>if (filter === 'active')</code> 里面，TS 知道 <code>filter</code> 一定是 <code>'active'</code>，这叫<strong>类型收窄</strong>（narrowing）。所以你不用为每个分支再写一次类型。</p><h3>函数类型与泛型入门</h3><pre><code class="lang-ts">type Formatter = (value: number) =&gt; string;
+
+<span class="tok-k">const</span> money: Formatter = (value) =&gt; <span class="tok-s">`¥${value.toFixed(2)}`</span>;</code></pre><p><code>(value: number) =&gt; string</code> 读作「接收一个 number，返回一个 string 的函数」。参数名可以省略，类型不能省。</p><p>泛型是「类型也当参数传」：</p><pre><code class="lang-ts"><span class="tok-k">function</span> identity&lt;T&gt;(value: T): T {
+  <span class="tok-k">return</span> value;
+}
+
+<span class="tok-k">const</span> n = <span class="tok-f">identity</span>(<span class="tok-n">42</span>);        <span class="tok-c">// n 的类型是 number</span>
+<span class="tok-k">const</span> s = <span class="tok-f">identity</span>(<span class="tok-s">'hello'</span>);   <span class="tok-c">// s 的类型是 string</span></code></pre><p><code>&lt;T&gt;</code> 是类型参数，调用时 TS 从实参推断出具体类型。如果写成 <code>function identity(value: any): any</code>，调用方拿到的也是 <code>any</code>，后面所有检查都失效了。泛型的意义是：<strong>一个函数服务多种类型，但不丢失类型信息</strong>。</p><p>业务里真正高频的只有四样：<code>interface</code> 描述对象、联合类型表示枚举、可选属性、泛型函数。剩下的工具类型、条件类型，用到再查。</p><h3>tsconfig.json 的关键项</h3><pre><code class="lang-json">{
+  <span class="tok-s">&quot;compilerOptions&quot;</span>: {
+    <span class="tok-s">&quot;target&quot;</span>: <span class="tok-s">&quot;ES2022&quot;</span>,
+    <span class="tok-s">&quot;module&quot;</span>: <span class="tok-s">&quot;ESNext&quot;</span>,
+    <span class="tok-s">&quot;moduleResolution&quot;</span>: <span class="tok-s">&quot;bundler&quot;</span>,
+    <span class="tok-s">&quot;strict&quot;</span>: <span class="tok-k">true</span>,
+    <span class="tok-s">&quot;noEmit&quot;</span>: <span class="tok-k">true</span>,
+    <span class="tok-s">&quot;skipLibCheck&quot;</span>: <span class="tok-k">true</span>
+  },
+  <span class="tok-s">&quot;include&quot;</span>: [<span class="tok-s">&quot;src&quot;</span>]
+}</code></pre><div class="table-wrap"><table><thead><tr><th>配置</th><th>作用</th><th>建议</th></tr></thead><tbody><tr><td><code>target</code></td><td>编译到哪个 JS 版本</td><td>现代项目用 <code>ES2022</code></td></tr><tr><td><code>module</code></td><td>模块格式</td><td>前端用 <code>ESNext</code></td></tr><tr><td><code>moduleResolution</code></td><td>怎么找模块</td><td>配合 Vite 用 <code>bundler</code></td></tr><tr><td><code>strict</code></td><td>打开全部严格检查</td><td>新项目直接 <code>true</code></td></tr><tr><td><code>noEmit</code></td><td>只检查，不输出文件</td><td>交给 Vite 打包时设 <code>true</code></td></tr><tr><td><code>skipLibCheck</code></td><td>跳过依赖包的类型检查</td><td>建议开，能显著加快速度</td></tr><tr><td><code>include</code></td><td>检查哪些文件</td><td>写 <code>[&quot;src&quot;]</code>，别把 <code>dist</code> 扫进来</td></tr></tbody></table></div><p><code>strict</code> 是分水岭。它包含 <code>strictNullChecks</code>、<code>noImplicitAny</code> 等一组检查，会把「可能为 <code>undefined</code>」「隐式 <code>any</code>」都变成错误。新项目一开始就开，老项目最后再开。</p><h3>渐进迁移：从叶子文件开始</h3><p>不要停下来把整个项目重写一遍。按这个顺序，每天迁一点：</p><ol><li>装 TypeScript，生成配置，先设 <code>allowJs: true</code>，让 <code>.js</code> 和 <code>.ts</code> 共存</li><li>从<strong>没有依赖别人的文件</strong>开始改：<code>utils/</code> → <code>api/</code> → <code>store/</code> → <code>render/</code> → <code>main.js</code></li><li>给函数参数和接口返回值加类型，这是收益最大的两处</li><li>打开 <code>strict</code>，一次只修一类错误，修完再开下一类</li><li>入口文件最后改，因为它是所有模块的汇合点</li></ol><pre><code class="lang-bash"># 在项目根目录执行
+npm install -D typescript
+npx tsc --init
+npx tsc --noEmit</code></pre><p><code>npx tsc --noEmit</code> 只做类型检查，不生成文件。Vite 的开发服务器会直接运行 <code>.ts</code>，但它<strong>不做类型检查</strong>，所以 npm 脚本里要单独留一条检查命令，提交前跑一次。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>不要用 <code>any</code> 和 <code>as</code> 让报错消失。<code>any</code> 会传染，一个变量是 <code>any</code>，从它取出来的所有东西都是 <code>any</code>；<code>as</code> 是「我保证它是这个类型」，保证错了运行时照样崩。类型对不上时，先改数据结构和函数签名，最后才考虑断言。</p></div><h2>Node.js：让 JS 离开浏览器</h2><p>Node.js 是 JS 的另一个运行环境。语言一样，能用的东西不一样：</p><div class="table-wrap"><table><thead><tr><th>能力</th><th>浏览器</th><th>Node.js</th></tr></thead><tbody><tr><td><code>document</code>、<code>window</code></td><td>有</td><td>没有</td></tr><tr><td>全局对象</td><td><code>window</code></td><td><code>globalThis</code></td></tr><tr><td>读写文件</td><td>不能直接读</td><td><code>fs</code></td></tr><tr><td>路径处理</td><td>无</td><td><code>path</code></td></tr><tr><td>进程与环境变量</td><td>受限</td><td><code>process</code></td></tr><tr><td>启动方式</td><td>浏览器加载页面</td><td><code>node server.js</code></td></tr><tr><td>网络请求</td><td><code>fetch</code>、XHR</td><td><code>fetch</code>（Node 18 起）</td></tr></tbody></table></div><pre><code class="lang-js"><span class="tok-c">// 在 Node 里运行</span>
+console.<span class="tok-f">log</span>(<span class="tok-k">typeof</span> document);    <span class="tok-c">// 输出: undefined</span>
+console.<span class="tok-f">log</span>(<span class="tok-k">typeof</span> window);      <span class="tok-c">// 输出: undefined</span>
+console.<span class="tok-f">log</span>(process.version);    <span class="tok-c">// 输出: v22.x.x，以你安装的版本为准</span></code></pre><p>同样一段数组排序、Promise、<code>JSON.parse</code>，两边都能跑。不能跑的是所有和「页面」有关的东西——Node 里没有 DOM，<code>document</code> 本身就不存在，直接写 <code>document.querySelector</code> 会抛 <code>TypeError</code>。这也是为什么第 15 章的代码不能直接搬到服务器上。</p><h3>起一个后端项目</h3><pre><code class="lang-json">{
+  <span class="tok-s">&quot;name&quot;</span>: <span class="tok-s">&quot;todo-api&quot;</span>,
+  <span class="tok-s">&quot;private&quot;</span>: <span class="tok-k">true</span>,
+  <span class="tok-s">&quot;type&quot;</span>: <span class="tok-s">&quot;module&quot;</span>,
+  <span class="tok-s">&quot;scripts&quot;</span>: {
+    <span class="tok-s">&quot;dev&quot;</span>: <span class="tok-s">&quot;node --watch server.js&quot;</span>
+  },
+  <span class="tok-s">&quot;dependencies&quot;</span>: {
+    <span class="tok-s">&quot;express&quot;</span>: <span class="tok-s">&quot;^5.0.0&quot;</span>,
+    <span class="tok-s">&quot;cors&quot;</span>: <span class="tok-s">&quot;^2.8.5&quot;</span>
+  }
+}</code></pre><p><code>type: &quot;module&quot;</code> 让 Node 按 ESM 解析 <code>.js</code>，能写 <code>import</code>（第 14 章讲过）。<code>node --watch</code> 会在文件变化时自动重启，省得每次手动 <code>Ctrl + C</code>。</p><pre><code class="lang-bash"># 在 todo-api 目录执行
+npm init -y
+npm pkg set type=module
+npm pkg set scripts.dev=&quot;node --watch server.js&quot;
+npm install express cors
+npm run dev</code></pre><h3>原生 http：20 行写一个接口</h3><p>不装任何框架，Node 自带的 <code>http</code> 就能起服务：</p><pre><code class="lang-js"><span class="tok-c">// server.js</span>
+<span class="tok-k">import</span> http <span class="tok-k">from</span> <span class="tok-s">'node:http'</span>;
+
+<span class="tok-k">const</span> todos = [{ id: <span class="tok-n">1</span>, text: <span class="tok-s">'读第 20 章'</span>, done: <span class="tok-k">false</span> }];
+
+<span class="tok-k">const</span> server = http.<span class="tok-f">createServer</span>((req, res) =&gt; {
+  res.<span class="tok-f">setHeader</span>(<span class="tok-s">'Content-Type'</span>, <span class="tok-s">'application/json; charset=utf-8'</span>);
+
+  <span class="tok-k">if</span> (req.method === <span class="tok-s">'GET'</span> &amp;&amp; req.url === <span class="tok-s">'/api/todos'</span>) {
+    res.<span class="tok-f">end</span>(JSON.<span class="tok-f">stringify</span>(todos));
+    <span class="tok-k">return</span>;
+  }
+
+  res.statusCode = <span class="tok-n">404</span>;
+  res.<span class="tok-f">end</span>(JSON.<span class="tok-f">stringify</span>({ message: <span class="tok-s">'Not Found'</span> }));
+});
+
+server.<span class="tok-f">listen</span>(<span class="tok-n">3000</span>, () =&gt; {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'http://localhost:3000/api/todos'</span>);
+});</code></pre><p>运行 <code>node server.js</code>，终端会打印 <code>http://localhost:3000/api/todos</code>，浏览器打开就返回 <code>[{&quot;id&quot;:1,&quot;text&quot;:&quot;读第 20 章&quot;,&quot;done&quot;:false}]</code>。这段代码做了四件事：监听端口、读请求方法和路径、设响应头、写响应体。你能看到框架要解决的问题：路由靠 <code>if</code> 手写、读 POST 的请求体要自己收集数据流、每个响应都要手动设 <code>Content-Type</code>。接口一多，这些重复代码会淹没业务。</p><h3>Express：同样的接口，少写样板代码</h3><pre><code class="lang-js"><span class="tok-c">// server.js</span>
+<span class="tok-k">import</span> express <span class="tok-k">from</span> <span class="tok-s">'express'</span>;
+<span class="tok-k">import</span> cors <span class="tok-k">from</span> <span class="tok-s">'cors'</span>;
+
+<span class="tok-k">const</span> app = <span class="tok-f">express</span>();
+app.<span class="tok-f">use</span>(<span class="tok-f">cors</span>());           <span class="tok-c">// 开发阶段允许跨源请求</span>
+app.<span class="tok-f">use</span>(express.<span class="tok-f">json</span>());   <span class="tok-c">// 自动解析 JSON 请求体</span>
+
+<span class="tok-k">const</span> todos = [{ id: <span class="tok-n">1</span>, text: <span class="tok-s">'读第 20 章'</span>, done: <span class="tok-k">false</span> }];
+
+app.<span class="tok-k">get</span>(<span class="tok-s">'/api/todos'</span>, (req, res) =&gt; {
+  res.<span class="tok-f">json</span>(todos);
+});
+
+app.<span class="tok-f">post</span>(<span class="tok-s">'/api/todos'</span>, (req, res) =&gt; {
+  <span class="tok-k">const</span> text = <span class="tok-f">String</span>(req.body.text ?? <span class="tok-s">''</span>).<span class="tok-f">trim</span>();
+  <span class="tok-k">if</span> (text === <span class="tok-s">''</span>) {
+    <span class="tok-k">return</span> res.<span class="tok-f">status</span>(<span class="tok-n">400</span>).<span class="tok-f">json</span>({ message: <span class="tok-s">'text 不能为空'</span> });
+  }
+
+  <span class="tok-k">const</span> todo = { id: Date.<span class="tok-f">now</span>(), text, done: <span class="tok-k">false</span> };
+  todos.<span class="tok-f">push</span>(todo);
+  res.<span class="tok-f">status</span>(<span class="tok-n">201</span>).<span class="tok-f">json</span>(todo);
+});
+
+app.<span class="tok-f">listen</span>(<span class="tok-n">3000</span>, () =&gt; {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'http://localhost:3000/api/todos'</span>);
+});</code></pre><p><code>app.use(...)</code> 注册的是<strong>中间件</strong>（middleware）：请求进入路由之前，先经过这些函数。<code>express.json()</code> 把请求体解析成对象，<code>cors()</code> 加上跨源响应头。没有 <code>express.json()</code>，<code>req.body</code> 是 <code>undefined</code>；没有 <code>cors()</code>，浏览器会拦下跨源请求。</p><p><code>res.json()</code> 自动设 <code>Content-Type</code> 并序列化，<code>res.status(400).json(...)</code> 可以链式写完状态码和响应体。对比原生版本，路由、解析、响应三件事都被收进了一行。</p><h3>接口基础：前后端怎么约定</h3><p>REST 是一套命名习惯，用「资源 + 方法」表达操作：</p><div class="table-wrap"><table><thead><tr><th>方法</th><th>路径</th><th>作用</th><th>成功状态码</th></tr></thead><tbody><tr><td><code>GET</code></td><td><code>/api/todos</code></td><td>取列表</td><td>200</td></tr><tr><td><code>GET</code></td><td><code>/api/todos/1</code></td><td>取单条</td><td>200，找不到 404</td></tr><tr><td><code>POST</code></td><td><code>/api/todos</code></td><td>新建</td><td>201</td></tr><tr><td><code>PUT</code></td><td><code>/api/todos/1</code></td><td>整体替换一条</td><td>200</td></tr><tr><td><code>PATCH</code></td><td><code>/api/todos/1</code></td><td>只改部分字段</td><td>200</td></tr><tr><td><code>DELETE</code></td><td><code>/api/todos/1</code></td><td>删除</td><td>204</td></tr></tbody></table></div><p>状态码不用背全，记住四类：2xx 成功、3xx 重定向、4xx 客户端问题、5xx 服务端问题。前端最常处理的是 400（参数不对）、401（没登录）、404（不存在）、500（服务端崩了），具体含义第 16 章列过。</p><p>新建时请求体是一段 JSON，例如 <code>{&quot;text&quot;: &quot;买牛奶&quot;}</code>；请求头还要声明 <code>Content-Type: application/json</code>，服务器才知道该按 JSON 解析（第 16 章讲过漏写这个头的后果）。</p><p>页面调用自己的接口，和第 16 章调公开接口一样：</p><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">createTodo</span>(text) {
+  <span class="tok-k">const</span> res = <span class="tok-k">await</span> <span class="tok-f">fetch</span>(<span class="tok-s">'http://localhost:3000/api/todos'</span>, {
+    method: <span class="tok-s">'POST'</span>,
+    headers: { <span class="tok-s">'Content-Type'</span>: <span class="tok-s">'application/json'</span> },
+    body: JSON.<span class="tok-f">stringify</span>({ text }),
+  });
+
+  <span class="tok-k">if</span> (!res.ok) {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">`HTTP ${res.status}`</span>);
+  }
+
+  <span class="tok-k">return</span> res.<span class="tok-f">json</span>();
+}
+
+<span class="tok-f">createTodo</span>(<span class="tok-s">'买牛奶'</span>).<span class="tok-f">then</span>((todo) =&gt; console.<span class="tok-f">log</span>(todo));
+<span class="tok-c">// 返回的对象类似：{ id: 1730000000000, text: '买牛奶', done: false }</span>
+<span class="tok-c">// id 来自 Date.now()，每次调用都不同</span></code></pre><p>页面在 <code>5173</code>，接口在 <code>3000</code>，端口不同就是跨源，浏览器会拦。两种解决办法：后端 <code>app.use(cors())</code>（开发时够用），或者用第 19 章的 Vite 代理，让浏览器以为请求的是同源。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p><code>cors()</code> 不带参数等于允许所有来源。上线前要限制成自己的域名，否则任何网站都能调你的接口。需要登录态的接口还要处理 cookie 的跨源设置，这件事等做登录时再查文档，不要凭感觉配。</p></div><h3>数据库一句话</h3><p>接口现在把数据放在一个数组里，重启就没了。真实项目要落盘：</p><div class="table-wrap"><table><thead><tr><th>数据库</th><th>形态</th><th>适合</th><th>一句话理解</th></tr></thead><tbody><tr><td>SQLite</td><td>单个文件</td><td>本地、小项目、原型</td><td>不用装服务，一个文件就是一个库</td></tr><tr><td>MySQL / PostgreSQL</td><td>服务进程 + SQL</td><td>正式业务、多人并发</td><td>表和表用外键关联，生态成熟</td></tr><tr><td>MongoDB</td><td>文档</td><td>结构常变、快速迭代</td><td>存 JSON 一样的文档，字段可以不一样</td></tr></tbody></table></div><p>学习顺序建议：先用 SQLite 把「建表、插入、查询、更新、删除」跑一遍，SQL 语法在 MySQL 上基本通用。不要一上来研究分库分表，那是数据量到千万级才需要的事。</p><h2>小程序：另一套运行时</h2><p>小程序不是「手机上的网页」。它有自己的文件格式、组件体系和视图更新方式。</p><h3>原生小程序的目录</h3><pre><code class="lang-text">mini-todo/
+├── app.js                  # 小程序启动逻辑
+├── app.json                # 全局配置：页面列表、窗口样式
+├── app.wxss                # 全局样式
+├── project.config.json     # 开发者工具的项目配置
+└── pages/
+    └── index/
+        ├── index.js        # 页面逻辑
+        ├── index.json      # 页面配置
+        ├── index.wxml      # 结构，类似 HTML
+        └── index.wxss      # 样式，类似 CSS</code></pre><pre><code class="lang-json">{
+  <span class="tok-s">&quot;pages&quot;</span>: [<span class="tok-s">&quot;pages/index/index&quot;</span>],
+  <span class="tok-s">&quot;window&quot;</span>: {
+    <span class="tok-s">&quot;navigationBarTitleText&quot;</span>: <span class="tok-s">&quot;我的待办&quot;</span>
+  }
+}</code></pre><p><code>app.json</code> 的 <code>pages</code> 数组决定有哪些页面，第一项就是启动页。新增页面要在这里登记，否则打不开。</p><h3>一个页面：用 setData 驱动视图</h3><pre><code class="lang-js"><span class="tok-f">Page</span>({
+  data: {
+    todos: [],
+    input: <span class="tok-s">''</span>,
+  },
+
+  <span class="tok-f">onInput</span>(e) {
+    <span class="tok-k">this</span>.<span class="tok-f">setData</span>({ input: e.detail.value });
+  },
+
+  <span class="tok-f">addTodo</span>() {
+    <span class="tok-k">const</span> text = <span class="tok-k">this</span>.data.input.<span class="tok-f">trim</span>();
+    <span class="tok-k">if</span> (text === <span class="tok-s">''</span>) <span class="tok-k">return</span>;
+
+    <span class="tok-k">this</span>.<span class="tok-f">setData</span>({
+      todos: [...<span class="tok-k">this</span>.data.todos, { id: Date.<span class="tok-f">now</span>(), text, done: <span class="tok-k">false</span> }],
+      input: <span class="tok-s">''</span>,
+    });
+  },
+});</code></pre><p><code>data</code> 是页面的状态，<code>this.setData(...)</code> 修改它并触发视图更新。你不能像 Web 那样 <code>document.querySelector</code> 找到节点改内容，因为小程序根本没有 DOM。</p><p>页面还有自己的<strong>生命周期</strong>：<code>onLoad</code> 在页面首次加载时执行，适合取数据；<code>onShow</code> 每次页面显示时执行，适合刷新状态；<code>onUnload</code> 在页面关闭时执行，适合清理定时器。Web 里没有这套东西，页面打开就是打开，你只能靠 <code>DOMContentLoaded</code> 或路由事件模拟。</p><p>一个常见错误是直接改 <code>this.data.todos.push(...)</code>：数据变了，但视图不会更新，因为 <code>setData</code> 没被调用。这和第 18 章「只改数据不 render」是同一类错误，只是这里 <code>setData</code> 同时承担了两件事。</p><h3>请求接口</h3><pre><code class="lang-js"><span class="tok-c">// 在页面的某个方法里调用，例如 onLoad</span>
+wx.<span class="tok-f">request</span>({
+  url: <span class="tok-s">'https://api.example.com/todos'</span>,
+  method: <span class="tok-s">'GET'</span>,
+  success: (res) =&gt; {
+    <span class="tok-k">this</span>.<span class="tok-f">setData</span>({ todos: res.data });
+  },
+  fail: (err) =&gt; {
+    console.<span class="tok-f">error</span>(err);
+  },
+});</code></pre><p><code>wx.request</code> 是回调风格，不是 Promise。它和 <code>fetch</code> 最大的区别在域名：小程序要求接口是 HTTPS，并且提前在后台配置「request 合法域名」，<code>localhost</code> 不行。开发时可以在开发者工具里勾选「不校验合法域名」，但真机预览会恢复校验。</p><h3>Taro 与 uni-app</h3><p>如果想一套代码同时跑微信、支付宝和 H5，可以用 Taro（React 语法）或 uni-app（Vue 语法）。它们把小程序的原生写法包了一层，编译到不同平台。</p><p>建议顺序是：<strong>先写一遍原生小程序，再用框架</strong>。否则出现「样式在 H5 正常、在微信错位」「这个 API 在支付宝没有」时，你不知道是框架的问题还是平台的问题。原生写过一遍，你才知道框架替你做了什么。</p><h3>和 Web 的核心差异</h3><div class="table-wrap"><table><thead><tr><th>维度</th><th>Web</th><th>微信小程序</th></tr></thead><tbody><tr><td>结构</td><td>HTML + CSS + JS</td><td>WXML + WXSS + JS + JSON</td></tr><tr><td>DOM</td><td>有，可随意操作</td><td>没有，只能 <code>setData</code></td></tr><tr><td>事件</td><td><code>addEventListener</code></td><td><code>bindtap</code> 等，写在标签上</td></tr><tr><td>请求</td><td><code>fetch</code></td><td><code>wx.request</code></td></tr><tr><td>路由</td><td>地址栏、History</td><td><code>wx.navigateTo</code> 等 API</td></tr><tr><td>尺寸单位</td><td><code>px</code>、<code>rem</code>、<code>vw</code></td><td><code>rpx</code>，按 750 设计稿等比缩放</td></tr><tr><td>发布</td><td>部署即上线</td><td>提交审核，通过才上线</td></tr></tbody></table></div><h2>学习路线：三个阶段</h2><h3>第一阶段：把 JS 用顺（2 到 4 周）</h3><ul><li>不看教程，独立重写第 18 章的待办，并加上编辑和截止日期</li><li>用 <code>fetch</code> 做两个小页面，完整处理加载、失败、空三种状态</li><li>看到一段报错，能说出先看 <code>name</code>、<code>message</code> 还是调用栈</li></ul><p>验收：给你一个没做过的静态页面需求，你能在一天内做出可用的版本。</p><h3>第二阶段：工程与类型（3 到 4 周）</h3><ul><li>用 Vite 建项目、用 Git 管理、把产物部署到线上</li><li>给第 18 章的代码加 TS 类型，打开 <code>strict</code> 后清零报错</li><li>写一份能让人照着跑起来的 README，配一张截图</li></ul><p>验收：你的 GitHub 上有一个带线上地址、带说明、提交记录干净的项目。</p><h3>第三阶段：后端与小程序（4 到 6 周）</h3><ul><li>用 Express 写 4 个接口，接上 SQLite，能增删改查</li><li>让第 18 章的前端改成调自己的接口，处理失败和空数据</li><li>用原生小程序做一个只有列表和添加的页面，真机预览通过</li></ul><p>验收：一个「前端 + 自己的接口 + 数据库」的完整项目，以及一个能在微信里打开的小程序。</p><h2>5 个练手项目</h2><p>难度递增，每个都能写进作品集：</p><div class="table-wrap"><table><thead><tr><th>难度</th><th>项目</th><th>关键点</th><th>验收一句话</th></tr></thead><tbody><tr><td>入门</td><td>番茄钟</td><td><code>setInterval</code>、开始暂停重置、状态切换</td><td>25 分钟倒计时准确，暂停后时间不继续跑</td></tr><tr><td>入门</td><td>天气卡片</td><td><code>fetch</code>、三态界面、城市切换</td><td>换城市能更新，断网时有提示而不是空白</td></tr><tr><td>进阶</td><td>记账本</td><td>表单、分类汇总、<code>localStorage</code>、筛选</td><td>月度合计正确，刷新不丢，能按分类看</td></tr><tr><td>进阶</td><td>带登录的待办</td><td>Express、SQLite、密码哈希、会话</td><td>两个账号数据互不可见，未登录返回 401</td></tr><tr><td>挑战</td><td>小程序待办</td><td>原生小程序、接口或云开发</td><td>真机可添加和勾选，体验版能打开</td></tr></tbody></table></div><p>每个项目都要求：能在线访问、有 README、有截图。作品比证书有用，因为别人点开就能判断你会不会。</p><h2>怎么查文档</h2><p>最常用的文档是 MDN（<code>developer.mozilla.org</code>）。查一个方法，按这个顺序看：</p><ol><li>搜「MDN Array filter」，进中文页</li><li>先看语法签名：<code>filter(callbackFn, thisArg)</code>，再看 <code>callbackFn</code> 接收 <code>(element, index, array)</code> 三个参数</li><li>看返回值：返回新数组，不改变原数组</li><li>看示例，复制到控制台改一改</li><li>最后看浏览器兼容性表</li></ol><p>读签名有个小技巧：括号里的参数、方括号表示可选、<code>...</code> 表示剩余参数、箭头右边的 <code>string</code> 是返回类型。看不懂的示例，直接粘到控制台跑：</p><pre><code class="lang-js"><span class="tok-k">const</span> arr = [<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>, <span class="tok-n">4</span>];
+
+arr.<span class="tok-f">filter</span>((n) =&gt; n % <span class="tok-n">2</span> === <span class="tok-n">0</span>);   <span class="tok-c">// 输出: [2, 4]</span>
+arr;                              <span class="tok-c">// 输出: [1, 2, 3, 4]，原数组没变</span></code></pre><p>其他常用入口：Node 的 API 查 <code>nodejs.org/api</code>，微信小程序查 <code>developers.weixin.qq.com</code>，TypeScript 查官方 Handbook。查文档的能力比记住 API 重要，因为 API 会变，查法不会。</p><h2>怎么提问</h2><p>提问不是「把问题丢给别人」，而是「把问题缩小到别人一眼能看懂」。一个能被回答的提问包含三部分：</p><ul><li><strong>最小复现代码</strong>：10 到 20 行，能直接跑，去掉业务和无关样式</li><li><strong>报错全文</strong>：<code>name</code>、<code>message</code>，以及调用栈的前几行；不要只发一句「报错了」</li><li><strong>期望与实际</strong>：你以为会发生什么，实际发生了什么，已经试过什么</li></ul><pre><code class="lang-text"># 没人能回答
+我的代码不行，怎么办？
+
+# 能回答
+环境：Chrome 最新版，Node 22
+期望：点删除只删掉那一条
+实际：点删除后两条都没了，控制台没有报错
+最小复现：
+const todos = [{ id: 1 }, { id: 1 }];
+todos = todos.filter((t) =&gt; t.id !== 1);
+console.log(todos.length);   // 0，两条 id 相同
+已试过：在 handler 里打印 id，发现两条都是 1</code></pre><p>最后那段「已试过」很关键，它说明你不是在等答案，而是在排查。大多数时候，把最小复现写出来的过程中，你自己就找到原因了。</p><h2>常见误区清单</h2><div class="table-wrap"><table><thead><tr><th>做法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td>先学框架再补语言</td><td>只会抄 API，报错看不懂</td><td>框架解决组织问题，语言才是底座</td></tr><tr><td>只看不写</td><td>看得懂，写不出</td><td>阅读是输入，写代码是另一项技能</td></tr><tr><td>收藏一堆教程</td><td>一直在准备，从没开始</td><td>一份跟到底比十份看开头强</td></tr><tr><td>等「学完」再做项目</td><td>永远开始不了</td><td>项目会逼你补上真正缺的那块</td></tr><tr><td>报错只看第一行</td><td>定位不到原因</td><td><code>name</code>、<code>message</code>、调用栈要一起看</td></tr><tr><td>把 TS 当新语言从头学</td><td>卡在类型体操</td><td>先 <code>interface</code>、联合、可选属性、泛型函数</td></tr><tr><td>后端一上来学分布式</td><td>用不上，也理解不了</td><td>先 HTTP、一个框架、一个数据库</td></tr><tr><td>小程序直接用 Taro</td><td>平台问题查不动</td><td>先写原生，再用框架</td></tr><tr><td>复制粘贴跑通就算会</td><td>换个需求就不会</td><td>关掉教程重写一遍才算掌握</td></tr><tr><td>只学不部署</td><td>没有能看的作品</td><td>上线才算交付</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>下面这段 TS 会怎样？</summary><div class="quiz-body"><pre><code class="lang-ts"><span class="tok-k">function</span> <span class="tok-f">add</span>(a: number, b: number): number {
+  <span class="tok-k">return</span> a + b;
+}
+
+<span class="tok-f">add</span>(<span class="tok-s">'1'</span>, <span class="tok-n">2</span>);</code></pre><p>编译报错：<code>Argument of type 'string' is not assignable to parameter of type 'number'</code>。如果去掉类型注解，JS 会返回 <code>'12'</code>，运行时不报错，但结果错了。TS 的价值就是把这类错误提前。</p></div></details><details class="quiz"><summary>描述一个对象结构，用 <code>interface</code> 还是 <code>type</code>？联合类型用哪个？</summary><div class="quiz-body"><p>描述对象两者都行，团队里通常用 <code>interface</code>，可读性好、支持 <code>extends</code>。联合类型只能用 <code>type</code>，例如 <code>type Filter = 'all' | 'active' | 'done'</code>。不要在同一个文件里来回换。</p></div></details><details class="quiz"><summary>在 Node.js 里执行下面这段代码，输出什么？为什么？</summary><div class="quiz-body"><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-k">typeof</span> document);
+console.<span class="tok-f">log</span>(<span class="tok-k">typeof</span> window);</code></pre><p>输出两行 <code>undefined</code>。Node 没有浏览器 DOM，<code>document</code> 和 <code>window</code> 都不存在；<code>typeof</code> 对不存在的变量不会抛错，只会返回 <code>'undefined'</code>。直接写 <code>document.querySelector</code> 才会抛 <code>ReferenceError</code>。</p></div></details><details class="quiz"><summary>小程序里为什么不能 <code>document.querySelector</code>？那怎么改界面？</summary><div class="quiz-body"><p>小程序没有 DOM，视图层由框架管理。页面状态放在 <code>data</code> 里，通过 <code>this.setData(...)</code> 修改，框架根据新数据重新渲染。直接改 <code>this.data</code> 不会触发更新。</p></div></details><details class="quiz"><summary>把密钥写成 <code>VITE_API_KEY</code> 放在前端，安全吗？</summary><div class="quiz-body"><p>不安全。构建时变量会被替换成字符串，打进公开的 JS 文件，任何人打开控制台都能看到。密钥必须留在后端，前端只调自己的接口。</p></div></details><details class="quiz"><summary>页面在 <code>localhost:5173</code>，接口在 <code>localhost:3000</code>，<code>fetch</code> 为什么会失败？两种解法？</summary><div class="quiz-body"><p>端口不同就是跨源，浏览器按同源策略拦截。解法：后端加 CORS 响应头（<code>app.use(cors())</code>），或开发时用 Vite 的 <code>server.proxy</code> 把 <code>/api</code> 转发到 3000，让浏览器看来是同源。</p></div></details><details class="quiz"><summary>下面这段代码的运行结果和类型分别是什么？</summary><div class="quiz-body"><pre><code class="lang-ts"><span class="tok-k">function</span> identity&lt;T&gt;(value: T): T {
+  <span class="tok-k">return</span> value;
+}
+
+<span class="tok-k">const</span> result = <span class="tok-f">identity</span>(<span class="tok-s">'hello'</span>);
+console.<span class="tok-f">log</span>(result);</code></pre><p>运行时输出 <code>hello</code>；<code>result</code> 的类型被推断为 <code>string</code>。泛型让同一个函数适配多种类型，同时保留具体的类型信息，而不是退化成 <code>any</code>。</p></div></details><details class="quiz"><summary>学完 JS 之后，应该先学框架还是先做项目？</summary><div class="quiz-body"><p>先做两三个不依赖框架的原生项目，把语言、DOM、异步、请求练熟。框架解决的是组织代码的问题，底层能力不牢时，遇到问题只能猜。项目做完再学框架，会快得多。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>用 <code>npx tsc --init</code> 建一份配置，把第 18 章的 <code>app.js</code> 改成 <code>app.ts</code>：给 <code>Todo</code> 写 <code>interface</code>，给 <code>addTodo</code>、<code>render</code>、<code>load</code> 的参数和返回值加类型，打开 <code>strict</code>。 验收：<code>npx tsc --noEmit</code> 零报错；故意传一个字符串给数字参数，编辑器立刻标红；页面功能不变。</li></ol><ol><li>用 Express 写 4 个接口：列表、新建、改完成状态、删除。用 <code>curl</code> 或页面的 <code>fetch</code> 逐个验证。 验收：新建返回 201，空 <code>text</code> 返回 400，删除返回 204，不存在的 <code>id</code> 返回 404；重启服务后数据消失（正常，下一步才接数据库）。</li></ol><ol><li>用微信开发者工具建一个原生小程序，做一个只有「输入 + 添加 + 列表」的页面。 验收：模拟器里能添加，输入框清空，列表即时更新；把 <code>setData</code> 改成直接改 <code>this.data</code>，能观察到视图不更新。</li></ol><p><strong>进阶</strong></p><ol><li>把第 18 章的前端接到自己的 Express 接口，去掉 <code>localStorage</code>；接口失败时显示提示和重试。 验收：刷新后数据从接口读回；停掉后端时页面有错误提示而不是空白；CORS 或代理配置正确。</li></ol><ol><li>用 Taro 或 uni-app 建一个项目，把待办页面跑通 H5 和微信小程序两端。 验收：两端都能添加和勾选；平台差异（如请求 API）有单独处理；能说清框架替你做了哪些事。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>这一章没有让你「学完」，只是把三条路标出来。真正拉开差距的不是你知道 TypeScript、Node、小程序这三个词，而是你有没有把其中一个跑通一遍。</p><p>最省力的下一步：打开第 18 章的项目，花一个晚上把它改成 <code>.ts</code>。不用学完类型体操，只给 <code>Todo</code> 加一个 <code>interface</code>，你就会第一次感受到「编辑器在帮你写代码」。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="19.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a class="is-disabled" href="#" aria-disabled="true" tabindex="-1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>已是最后一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"20","title":"下一步：TypeScript、Node 与小程序"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

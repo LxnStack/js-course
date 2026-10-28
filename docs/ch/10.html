@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>this 到底指向谁 · JS 通勤课</title>
+<meta name="description" content="用「看调用方式，不看定义位置」一句口诀，讲清五种调用场景、this 丢失的经典 bug，以及 call/apply/bind 的区别。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">this 到底指向谁</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 10 章 · 约 34 分钟</div>
+    <h1>this 到底指向谁</h1>
+    <p class="lede">用「看调用方式，不看定义位置」一句口诀，讲清五种调用场景、this 丢失的经典 bug，以及 call/apply/bind 的区别。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p><code>this</code> 是 JS 里被误解最多的关键字。很多人背了一堆规则，一写代码还是错。</p><p>这一章只围绕一句口诀展开：**<code>this</code> 由调用方式决定，不由定义位置决定**。箭头函数是唯一的例外，它没有自己的 <code>this</code>。</p><p>学完你能判断五种调用场景下 <code>this</code> 是谁，能看懂并修复「方法赋给变量后 this 丢失」这类 bug，也能分清 <code>call</code>、<code>apply</code>、<code>bind</code>。第 9 章的作用域是理解箭头函数的前提，第 11 章的 class 会再次用到这里的结论。</p></blockquote><h2>为什么需要它</h2><p>假设你要在页面上显示两个人的自我介绍。最直接的做法是写两个几乎一样的函数：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">introduceTeacher</span>() {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'我是王老师'</span>);
+}
+
+<span class="tok-k">function</span> <span class="tok-f">introduceStudent</span>() {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'我是小明'</span>);
+}
+
+<span class="tok-f">introduceTeacher</span>();   <span class="tok-c">// 输出: 我是王老师</span>
+<span class="tok-f">introduceStudent</span>();   <span class="tok-c">// 输出: 我是小明</span></code></pre><p>只有名字不同，逻辑完全重复。人一多，函数就爆炸了。</p><p>更合理的做法是写一个函数，让它知道「现在轮到谁」。<code>this</code> 就是干这个的：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">introduce</span>() {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'我是'</span> + <span class="tok-k">this</span>.name);
+}
+
+<span class="tok-k">const</span> teacher = { name: <span class="tok-s">'王老师'</span>, introduce };
+<span class="tok-k">const</span> student = { name: <span class="tok-s">'小明'</span>, introduce };
+
+teacher.<span class="tok-f">introduce</span>();   <span class="tok-c">// 输出: 我是王老师</span>
+student.<span class="tok-f">introduce</span>();   <span class="tok-c">// 输出: 我是小明</span></code></pre><p>同一个 <code>introduce</code> 函数，挂到两个对象上，执行时自动知道该读谁的 <code>name</code>。这就是 <code>this</code> 存在的意义：<strong>让函数在复用时，能拿到「当前是哪个对象在调用我」</strong>。</p><p>如果没有 <code>this</code>，你就得把对象作为参数显式传进去：<code>introduce(teacher)</code>。<code>this</code> 只是把这件麻烦事变得隐形了，代价是它的规则需要你记清楚。</p><p>你可以把 <code>this</code> 理解成函数的一个隐式参数：调用者不用显式写出来，函数却能在执行时知道「现在是谁在调用我」。这个设计让方法可以复用，也带来一个副作用——同一个函数，换个调用方式，结果就可能完全不同。这一章剩下的内容，都是在处理这个副作用。</p><h2>一句口诀：看调用方式，不看定义位置</h2><p>判断 <code>this</code> 时，不要看函数写在哪里，要看<strong>这一行代码是怎么调用它的</strong>。</p><pre><code class="lang-js"><span class="tok-k">const</span> user = {
+  name: <span class="tok-s">'小明'</span>,
+  <span class="tok-f">say</span>() {
+    console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.name);
+  },
+};
+
+user.<span class="tok-f">say</span>();   <span class="tok-c">// 输出: 小明</span></code></pre><p><code>say</code> 定义在 <code>user</code> 里面，调用时写的是 <code>user.say()</code>，点号左边是 <code>user</code>，所以 <code>this</code> 是 <code>user</code>。</p><p>但同样是这个函数，换一种调用方式，<code>this</code> 就变了：</p><pre><code class="lang-js"><span class="tok-k">const</span> fn = user.say;
+<span class="tok-f">fn</span>();   <span class="tok-c">// this 不再是 user，读不到「小明」</span></code></pre><p>函数还是那个函数，定义位置没变，只是调用时前面没有 <code>user.</code> 了，<code>this</code> 就不再是 <code>user</code>。</p><p>生活类比：<code>this</code> 像一把钥匙，同一把钥匙插在哪扇门上，就开哪扇门。钥匙本身不记得自己属于谁，是「插在哪」决定了结果。</p><p>这里要分清两个容易混的概念：**定义位置决定作用域，调用方式决定 <code>this</code>**。第 9 章讲的作用域，是函数能看见哪些变量；<code>this</code> 则是函数执行时指向哪个对象。两者互不替代。一个函数可以定义在全局，却通过 <code>obj.method()</code> 让 <code>this</code> 指向 <code>obj</code>；也可以在对象里定义，被拆出来后 <code>this</code> 变成 <code>undefined</code>。</p><h2>五种调用场景</h2><p>日常代码里，函数被调用的方式只有五种。把每一种的 <code>this</code> 记住，大部分问题就解决了。</p><h3>场景一：普通函数调用</h3><p>直接写函数名加括号，前面没有任何对象：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">showThis</span>() {
+  console.<span class="tok-f">log</span>(<span class="tok-k">this</span> === globalThis);
+}
+
+<span class="tok-f">showThis</span>();   <span class="tok-c">// 输出: true</span></code></pre><p>在<strong>非严格模式</strong>的脚本里，普通调用的 <code>this</code> 会被替换成全局对象。浏览器里是 <code>window</code>，Node 里是 <code>global</code>，现代 JS 统一用 <code>globalThis</code> 表示它们。</p><p>为什么非严格模式要兜底？这是 JS 早期为了让代码「不报错」留下的行为。代价是错误被藏起来：你明明丢了 <code>this</code>，程序却继续跑，只是结果不对。现代代码基本都在严格模式里，所以更常见的现象是直接抛错，而不是悄悄读到全局变量。</p><p>严格模式下结果不同：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">strictShow</span>() {
+  <span class="tok-s">'use strict'</span>;
+  console.<span class="tok-f">log</span>(<span class="tok-k">this</span>);
+}
+
+<span class="tok-f">strictShow</span>();   <span class="tok-c">// 输出: undefined</span></code></pre><p>严格模式不再做「替换成全局对象」这个兜底，<code>this</code> 就是 <code>undefined</code>。这不是坏事，后面会看到，它能让 <code>this</code> 丢失的错误立刻暴露。</p><h3>场景二：对象方法调用</h3><p>函数作为对象的属性被调用，<code>this</code> 是<strong>点号左边那个对象</strong>：</p><pre><code class="lang-js"><span class="tok-k">const</span> user = {
+  name: <span class="tok-s">'小明'</span>,
+  <span class="tok-f">say</span>() {
+    console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.name);
+  },
+};
+
+user.<span class="tok-f">say</span>();   <span class="tok-c">// 输出: 小明</span></code></pre><p>嵌套对象也一样，只看<strong>最后一个点号</strong>左边是谁：</p><pre><code class="lang-js"><span class="tok-k">const</span> shop = {
+  name: <span class="tok-s">'商店'</span>,
+  product: {
+    name: <span class="tok-s">'耳机'</span>,
+    <span class="tok-f">show</span>() {
+      console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.name);
+    },
+  },
+};
+
+shop.product.<span class="tok-f">show</span>();   <span class="tok-c">// 输出: 耳机</span></code></pre><p>这里 <code>this</code> 是 <code>shop.product</code>，不是 <code>shop</code>。很多人会误以为「方法属于最外层对象」，其实只认直接调用它的那个对象。</p><p>判断时可以先把调用表达式拆开：<code>shop.product.show()</code> 中，真正被调用的函数是 <code>show</code>，它前面的表达式是 <code>shop.product</code>，所以 <code>this</code> 就是 <code>shop.product</code>。如果写成 <code>const show = shop.product.show; show()</code>，前面的表达式没了，<code>this</code> 也就丢了。</p><p>还有一个细节：<code>(user.say)()</code> 仍然算方法调用，<code>this</code> 还是 <code>user</code>，因为括号没有破坏「点号左边有对象」这个结构；但 <code>(0, user.say)()</code> 里的逗号表达式会先算出函数本身，<code>this</code> 就丢了。日常几乎不会这样写，读压缩后的代码时可能遇到。</p><h3>场景三：call、apply、bind 显式绑定</h3><p>这三个方法都能强行指定 <code>this</code>，区别在传参和是否立即执行：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">greet</span>(greeting) {
+  console.<span class="tok-f">log</span>(greeting + <span class="tok-s">'，'</span> + <span class="tok-k">this</span>.name);
+}
+
+<span class="tok-k">const</span> user = { name: <span class="tok-s">'小明'</span> };
+
+greet.<span class="tok-f">call</span>(user, <span class="tok-s">'你好'</span>);          <span class="tok-c">// 输出: 你好，小明</span>
+greet.<span class="tok-f">apply</span>(user, [<span class="tok-s">'早上好'</span>]);     <span class="tok-c">// 输出: 早上好，小明</span>
+
+<span class="tok-k">const</span> bound = greet.<span class="tok-f">bind</span>(user);
+<span class="tok-f">bound</span>(<span class="tok-s">'晚上好'</span>);                   <span class="tok-c">// 输出: 晚上好，小明</span></code></pre><p><code>greet</code> 自己身上没有 <code>name</code>，但 <code>call</code> / <code>apply</code> 把 <code>this</code> 换成了 <code>user</code>，于是读到了 <code>user.name</code>。</p><p><code>call</code> 和 <code>apply</code> 的区别只在传参：参数少时用 <code>call</code> 更直观，参数已经在一个数组里时用 <code>apply</code> 更方便。<code>bind</code> 不执行函数，只负责返回一个「改装过」的新函数，适合提前准备好 <code>this</code>，等到事件触发或定时器到点时再调用。三者都不会改变原函数，只是这一次调用（或者这个新函数）的 <code>this</code> 不同。</p><p><code>bind</code> 还可以预先固定一部分参数，这在事件回调和工具函数里很常见。比如 <code>add.bind(null, 10)</code> 会把第一个参数固定成 10，之后调用只需要传第二个参数，<code>addTen(5)</code> 就得到 15。第一个参数是 <code>this</code>，这里用不上，传 <code>null</code> 占位。</p><h3>场景四：new 调用</h3><p>用 <code>new</code> 调用构造函数时，<code>this</code> 是<strong>新创建出来的那个对象</strong>：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">Person</span>(name) {
+  <span class="tok-k">this</span>.name = name;
+}
+
+<span class="tok-k">const</span> p = <span class="tok-k">new</span> <span class="tok-f">Person</span>(<span class="tok-s">'小明'</span>);
+console.<span class="tok-f">log</span>(p.name);   <span class="tok-c">// 输出: 小明</span></code></pre><p><code>new</code> 会在执行函数前先造一个空对象，把这个对象作为 <code>this</code>，再执行构造函数，最后返回它。所以 <code>this.name = name</code> 写在了新对象上，而不是全局对象上。这与普通调用最本质的区别是：<code>this</code> 不再靠调用方式猜，而是明确指向一个刚创建的对象。第 11 章会把 <code>new</code> 的四步拆开讲。</p><h3>场景五：箭头函数</h3><p>箭头函数没有自己的 <code>this</code>。它定义时外层作用域的 <code>this</code> 是什么，它就永远是什么：</p><pre><code class="lang-js"><span class="tok-k">const</span> obj = {
+  name: <span class="tok-s">'外层对象'</span>,
+  <span class="tok-f">regular</span>() {
+    <span class="tok-k">return</span> <span class="tok-k">function</span> () {
+      <span class="tok-k">return</span> <span class="tok-k">this</span>;
+    };
+  },
+  <span class="tok-f">arrow</span>() {
+    <span class="tok-k">return</span> () =&gt; <span class="tok-k">this</span>;
+  },
+};
+
+<span class="tok-k">const</span> r = obj.<span class="tok-f">regular</span>();
+<span class="tok-k">const</span> a = obj.<span class="tok-f">arrow</span>();
+
+console.<span class="tok-f">log</span>(<span class="tok-f">r</span>() === obj);   <span class="tok-c">// 输出: false</span>
+console.<span class="tok-f">log</span>(<span class="tok-f">a</span>() === obj);   <span class="tok-c">// 输出: true</span></code></pre><p><code>obj.arrow()</code> 执行时，方法里的 <code>this</code> 是 <code>obj</code>，箭头函数捕获了这个 <code>this</code>，所以 <code>a()</code> 返回 <code>obj</code>。<code>obj.regular()</code> 返回的是普通函数，调用 <code>r()</code> 时没有对象前缀，<code>this</code> 变成了全局对象或 <code>undefined</code>，所以不等于 <code>obj</code>。</p><p>这也意味着对象方法不要写成箭头函数：</p><pre><code class="lang-js"><span class="tok-k">const</span> bad = {
+  name: <span class="tok-s">'小明'</span>,
+  say: () =&gt; <span class="tok-k">this</span>,
+};
+
+console.<span class="tok-f">log</span>(bad.<span class="tok-f">say</span>() === bad);   <span class="tok-c">// 输出: false</span></code></pre><p>箭头函数定义在对象字面量里时，外层是全局或模块作用域，不是这个对象。<code>bad.say()</code> 无论怎么调用，<code>this</code> 都不会变成 <code>bad</code>。</p><p>箭头函数没有自己的 <code>this</code>，也没有 <code>prototype</code>，所以它既不能当构造函数，也不能被 <code>call</code>、<code>apply</code>、<code>bind</code> 重新绑定。它适合写在回调里，专门用来「继承外层的 <code>this</code>」；不适合当对象方法，也不适合当构造函数。判断标准很简单：这个函数需不需要「自己所属的对象」？需要就用普通函数或 class 方法，不需要就用箭头函数。</p><p>实际写代码时，箭头函数最常见的用途就是回调：数组的 <code>map</code> 里做转换、<code>setTimeout</code> 里访问外层对象、事件监听里调用组件方法。这些场景都不需要函数拥有自己的对象，只需要它借用外层环境。反过来，只要这个函数要挂到某个对象上当方法，就应该用普通函数或 class 方法。</p><h2>严格模式的影响</h2><p>严格模式（strict mode）是一组更严格的语法和行为规则。它可以在脚本或函数开头写 <code>'use strict'</code> 开启，class 内部和 ES module 默认就是严格模式。</p><p>它对 <code>this</code> 的影响只有一个，但很关键：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">loose</span>() {
+  console.<span class="tok-f">log</span>(<span class="tok-k">this</span> === globalThis);
+}
+<span class="tok-f">loose</span>();   <span class="tok-c">// 输出: true</span>
+
+<span class="tok-k">function</span> <span class="tok-f">strict</span>() {
+  <span class="tok-s">'use strict'</span>;
+  console.<span class="tok-f">log</span>(<span class="tok-k">this</span>);
+}
+<span class="tok-f">strict</span>();   <span class="tok-c">// 输出: undefined</span></code></pre><p>非严格模式把普通调用的 <code>this</code> 兜底成全局对象，等于把错误藏了起来；严格模式直接给 <code>undefined</code>，你访问 <code>this.name</code> 时立刻报错，问题当场暴露。</p><p>除了 <code>this</code>，严格模式还会禁止一些不安全的写法，比如给未声明的变量赋值、删除不可删除的属性、函数参数重名。这些规则合起来，让错误更早暴露。你在 class 里写的方法、用 ES module 拆出去的文件，都自动处于严格模式，不需要手写 <code>'use strict'</code>。</p><p>现代项目里，class 方法、ES module、TypeScript 编译后的代码基本都在严格模式下。所以你在实际项目里遇到的「<code>this</code> 丢失」，通常表现为 <code>Cannot read properties of undefined</code>，而不是悄悄读到全局变量。</p><p>判断当前代码是不是严格模式，有个简单办法：在函数里打印 <code>this</code>，直接调用得到 <code>undefined</code> 就是严格模式，得到全局对象就不是。这个技巧在接手老项目、排查 <code>this</code> 问题时很好用。</p><h2>最常见的 bug：this 丢失</h2><p>理解了这个 bug，<code>this</code> 就算学明白了。</p><p>它的本质只有一句话：<strong>「方法」不是函数自带的属性，而是调用时临时给的</strong>。函数本身不知道自己属于哪个对象，是 <code>obj.method()</code> 这种写法在调用瞬间把 <code>this</code> 给了它。一旦你把函数单独拿出来，这个「调用瞬间的关联」就断了。</p><p>真实项目里，这个 bug 最常出现在三类地方：把方法存进变量、把方法当回调传出去、从对象里解构方法。它们的共同点是「函数离开了原来的调用形式」。记住一个检查动作：看到 <code>this</code> 不对，先找这一行调用，问自己「点号左边是谁」，通常三秒内就能定位。</p><h3>场景一：把方法赋值给变量</h3><pre><code class="lang-js"><span class="tok-s">'use strict'</span>;
+
+<span class="tok-k">const</span> user = {
+  name: <span class="tok-s">'小明'</span>,
+  <span class="tok-f">say</span>() {
+    console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.name);
+  },
+};
+
+<span class="tok-k">const</span> fn = user.say;
+<span class="tok-f">fn</span>();   <span class="tok-c">// TypeError: Cannot read properties of undefined (reading 'name')</span></code></pre><p><code>const fn = user.say</code> 只是把函数本身取了出来，没有带走 <code>user</code>。调用 <code>fn()</code> 时前面没有对象，严格模式下 <code>this</code> 是 <code>undefined</code>，访问 <code>undefined.name</code> 就报错。</p><p>在非严格模式里不会报错，但 <code>this</code> 变成全局对象，<code>this.name</code> 通常是空字符串或 <code>undefined</code>，结果是错的，还更难查。</p><h3>场景二：方法作为回调传出去</h3><p>定时器、事件监听、数组方法都会接收回调。把方法直接传进去，同样会丢：</p><pre><code class="lang-js"><span class="tok-s">'use strict'</span>;
+
+<span class="tok-k">const</span> user = {
+  name: <span class="tok-s">'小明'</span>,
+  <span class="tok-f">say</span>() {
+    console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.name);
+  },
+};
+
+<span class="tok-f">setTimeout</span>(user.say, <span class="tok-n">0</span>);   <span class="tok-c">// TypeError: Cannot read properties of undefined</span></code></pre><p><code>setTimeout</code> 拿到函数后，是在未来的某个时刻「直接调用」它，前面没有 <code>user.</code>。调用方式变了，<code>this</code> 就没了。</p><p>为什么定时器不保留 <code>this</code>？因为 <code>setTimeout</code> 内部只是把回调存起来，到时间后直接执行 <code>callback()</code>，它并不知道这个函数原来挂在哪个对象上。事件监听、数组的 <code>map</code>、Promise 的 <code>then</code> 也是一样：它们只拿到函数，不拿到函数和原对象的关系。</p><p>三种修法：</p><pre><code class="lang-js"><span class="tok-s">'use strict'</span>;
+
+<span class="tok-k">const</span> user = {
+  name: <span class="tok-s">'小明'</span>,
+  <span class="tok-f">say</span>() {
+    console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.name);
+  },
+};
+
+<span class="tok-f">setTimeout</span>(user.say.<span class="tok-f">bind</span>(user), <span class="tok-n">0</span>);        <span class="tok-c">// 输出: 小明</span>
+
+<span class="tok-f">setTimeout</span>(() =&gt; user.<span class="tok-f">say</span>(), <span class="tok-n">0</span>);           <span class="tok-c">// 输出: 小明</span>
+
+<span class="tok-f">setTimeout</span>(<span class="tok-k">function</span> () {
+  user.<span class="tok-f">say</span>();                              <span class="tok-c">// 输出: 小明</span>
+}, <span class="tok-n">0</span>);</code></pre><p>第一种用 <code>bind</code> 把 <code>this</code> 永久固定成 <code>user</code>。第二种用箭头函数包一层，箭头函数自己不关心 <code>this</code>，真正的调用发生在 <code>user.say()</code> 这一行，点号还在。第三种用普通函数包一层，在函数体里手动写 <code>user.say()</code>，效果和第二种一样。</p><h3>场景三：解构方法</h3><p>解构也会把方法从对象上「摘」下来：</p><pre><code class="lang-js"><span class="tok-s">'use strict'</span>;
+
+<span class="tok-k">const</span> user = {
+  name: <span class="tok-s">'小明'</span>,
+  <span class="tok-f">say</span>() {
+    console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.name);
+  },
+};
+
+<span class="tok-k">const</span> { say } = user;
+<span class="tok-f">say</span>();   <span class="tok-c">// TypeError: Cannot read properties of undefined (reading 'name')</span></code></pre><p>原因和赋值给变量完全一样。想保留 <code>this</code>，解构后要重新 <code>bind</code>，或者干脆不解构，继续写 <code>user.say()</code>。</p><h2>call、apply、bind 的区别</h2><p>三个方法都用来指定 <code>this</code>，用一张表分清：</p><div class="table-wrap"><table><thead><tr><th>方法</th><th>传参形式</th><th>是否立即执行</th><th>返回值</th></tr></thead><tbody><tr><td><code>call</code></td><td>从第二个参数开始逐个传</td><td>是</td><td>函数本身的返回值</td></tr><tr><td><code>apply</code></td><td>第二个参数传一个数组</td><td>是</td><td>函数本身的返回值</td></tr><tr><td><code>bind</code></td><td>从第二个参数开始逐个传，可只传一部分</td><td>否</td><td>一个 <code>this</code> 已固定的新函数</td></tr></tbody></table></div><p>记忆方法：<code>call</code> 是「调用」，<code>apply</code> 是「用数组调用」，<code>bind</code> 是「绑定后留着以后调用」。</p><h3>手写一个 myBind</h3><p><code>bind</code> 本身不难，手写一遍能彻底理解它做的事：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">myBind</span>(fn, context, ...boundArgs) {
+  <span class="tok-k">return</span> <span class="tok-k">function</span> (...args) {
+    <span class="tok-k">return</span> fn.<span class="tok-f">apply</span>(context, [...boundArgs, ...args]);
+  };
+}
+
+<span class="tok-k">function</span> <span class="tok-f">introduce</span>(greeting, punctuation) {
+  <span class="tok-k">return</span> greeting + <span class="tok-s">'，'</span> + <span class="tok-k">this</span>.name + punctuation;
+}
+
+<span class="tok-k">const</span> user = { name: <span class="tok-s">'小明'</span> };
+<span class="tok-k">const</span> sayHello = <span class="tok-f">myBind</span>(introduce, user, <span class="tok-s">'你好'</span>);
+
+console.<span class="tok-f">log</span>(<span class="tok-f">sayHello</span>(<span class="tok-s">'！'</span>));   <span class="tok-c">// 输出: 你好，小明！</span></code></pre><p><code>myBind</code> 返回一个新函数，把 <code>context</code> 和预先传的参数都记在闭包里。真正调用时，用 <code>apply</code> 把 <code>this</code> 设成 <code>context</code>，再把「预先参数」和「调用时参数」拼起来。</p><p><code>bind</code> 固定的 <code>this</code> 不会被后续的 <code>call</code> 改掉。比如把一个 <code>introduce</code> 函数 <code>bind(user)</code> 之后，再写 <code>bound.call({ name: '小红' }, '你好')</code>，返回的仍然是 <code>你好，小明</code>。一旦 <code>bind</code> 过，<code>this</code> 就锁死了。这一点在排查「为什么我 <code>call</code> 了还是不对」时很有用。</p><h3>借用方法</h3><p><code>call</code> 还有一个常见用途：把别处的方法借来用。比如 <code>Array.prototype.join.call(arrayLike, '-')</code>，<code>arrayLike</code> 是一个 <code>{ 0: 'a', 1: 'b', length: 2 }</code> 这样的「长得像数组」的对象，本身没有 <code>join</code> 方法，但 <code>join</code> 只依赖 <code>length</code> 和数字下标，用 <code>call</code> 把 <code>this</code> 换成它就能跑，结果得到 <code>'a-b'</code>。老代码里常这样处理 <code>arguments</code>、NodeList 这类对象。</p><h2>class 方法里的 this</h2><p>class 的方法默认是严格模式，所以「方法丢失」会直接报错：</p><pre><code class="lang-js"><span class="tok-k">class</span> Counter {
+  <span class="tok-f">constructor</span>() {
+    <span class="tok-k">this</span>.count = <span class="tok-n">0</span>;
+  }
+
+  <span class="tok-f">add</span>() {
+    <span class="tok-k">this</span>.count += <span class="tok-n">1</span>;
+    console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.count);
+  }
+}
+
+<span class="tok-k">const</span> c = <span class="tok-k">new</span> <span class="tok-f">Counter</span>();
+c.<span class="tok-f">add</span>();   <span class="tok-c">// 输出: 1</span>
+
+<span class="tok-k">const</span> add = c.add;
+<span class="tok-f">add</span>();     <span class="tok-c">// TypeError: Cannot read properties of undefined (reading 'count')</span></code></pre><p><code>c.add()</code> 正常，<code>add()</code> 报错，原因和前面的对象方法完全一样。class 只是把方法放到了原型上（第 11 章），调用规则没有变。</p><p>为什么 class 方法拆出来会直接报错，而不是像普通对象方法那样悄悄读到全局？因为 class 内部默认是严格模式。普通对象的方法如果在非严格脚本里定义，拆出来后 <code>this</code> 会变成全局对象，错误更隐蔽；class 帮你把这个问题提前暴露了。</p><p>修法之一是在构造函数里 <code>bind</code>，更现代的做法是用 class field 加箭头函数：</p><pre><code class="lang-js"><span class="tok-k">class</span> Counter {
+  count = <span class="tok-n">0</span>;
+  add = () =&gt; {
+    <span class="tok-k">this</span>.count += <span class="tok-n">1</span>;
+    console.<span class="tok-f">log</span>(<span class="tok-k">this</span>.count);
+  };
+}
+
+<span class="tok-k">const</span> c = <span class="tok-k">new</span> <span class="tok-f">Counter</span>();
+<span class="tok-k">const</span> add = c.add;
+<span class="tok-f">add</span>();   <span class="tok-c">// 输出: 1</span>
+<span class="tok-f">add</span>();   <span class="tok-c">// 输出: 2</span></code></pre><p><code>add</code> 是实例字段，每个实例在创建时都会执行这个箭头函数，它捕获的 <code>this</code> 就是当前实例。之后无论怎么拆出来调用，<code>this</code> 都不会丢。代价是每个实例都有一份自己的 <code>add</code> 函数，不再共享原型上的那一份。实例少的时候无所谓，实例成千上万时要注意内存。</p><p>如果这个 class 会被频繁创建实例，另一个折中方案是在构造函数里 <code>this.add = this.add.bind(this)</code>，这样方法仍然在原型上共享，只是每个实例多了一个绑定后的引用。</p><h2>事件回调中的 this</h2><p>浏览器的 <code>addEventListener</code> 会给普通函数回调设置 <code>this</code>，指向触发事件的元素。写 <code>button.addEventListener('click', function () { console.log(this); })</code>，点的是 <code>button</code>，<code>this</code> 就是那个元素；换成箭头函数，<code>this</code> 就变回外层作用域的值，通常不是 <code>button</code>。</p><p>普通函数的 <code>this</code> 是 <code>currentTarget</code>，也就是绑定监听的那个元素。箭头函数没有自己的 <code>this</code>，拿到的是外层作用域的。</p><p>事件回调还有一个容易混的点：<code>this</code> 是绑定监听的元素，不是被点击的那个子元素。如果给父元素绑定监听，点击子元素时 <code>this</code> 仍然是父元素，但 <code>event.target</code> 是真正被点的子元素。两者的区别在第 15 章讲事件冒泡时会展开。</p><p>这个规则在第 15 章做页面交互时会反复用到。现在只要记住：**事件回调里想用 <code>this</code>，别用箭头函数；想用外层的 <code>this</code>，才用箭头函数**。</p><h2>常见误区清单</h2><p>最后再强调一次：不要背「<code>this</code> 指向定义它的对象」这种错误口诀。定义位置只决定作用域，真正决定 <code>this</code> 的永远是调用方式。把这句话记牢，比背十条规则都管用。</p><div class="table-wrap"><table><thead><tr><th>写法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td><code>user.say()</code></td><td><code>this</code> 是 <code>user</code></td><td>点号左边是谁就是谁</td></tr><tr><td><code>const fn = user.say; fn()</code></td><td><code>this</code> 丢失</td><td>调用时前面没有对象</td></tr><tr><td><code>setTimeout(user.say, 0)</code></td><td><code>this</code> 丢失</td><td>定时器直接调用回调</td></tr><tr><td>对象方法写成箭头函数</td><td><code>this</code> 不是该对象</td><td>箭头函数取外层 <code>this</code></td></tr><tr><td><code>new Person()</code></td><td><code>this</code> 是新对象</td><td><code>new</code> 创建对象并绑定</td></tr><tr><td><code>greet.call(obj)</code></td><td><code>this</code> 是 <code>obj</code></td><td>显式指定</td></tr><tr><td><code>bound.call(other)</code></td><td><code>this</code> 仍是原来那个</td><td><code>bind</code> 后无法再改</td></tr><tr><td><code>a.b.show()</code></td><td><code>this</code> 是 <code>b</code></td><td>只看最后一个点号</td></tr><tr><td>严格模式下 <code>fn()</code></td><td><code>this</code> 是 <code>undefined</code></td><td>不再兜底成全局对象</td></tr><tr><td>class 方法被拆出来调用</td><td><code>TypeError</code></td><td>class 内部默认严格模式</td></tr><tr><td>箭头函数用 <code>call</code> 改 <code>this</code></td><td>改不了</td><td>它没有自己的 <code>this</code></td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>下面这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-s">'use strict'</span>;
+<span class="tok-k">const</span> obj = {
+  name: <span class="tok-s">'obj'</span>,
+  <span class="tok-f">say</span>() {
+    <span class="tok-k">return</span> <span class="tok-k">this</span>.name;
+  },
+};
+<span class="tok-k">const</span> fn = obj.say;
+console.<span class="tok-f">log</span>(<span class="tok-f">fn</span>());</code></pre><p>不会输出 <code>'obj'</code>，而是抛 <code>TypeError: Cannot read properties of undefined (reading 'name')</code>。<code>fn()</code> 是普通调用，严格模式下 <code>this</code> 是 <code>undefined</code>。</p></div></details><details class="quiz"><summary>下面这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> a = {
+  name: <span class="tok-s">'a'</span>,
+  b: {
+    name: <span class="tok-s">'b'</span>,
+    <span class="tok-f">show</span>() {
+      <span class="tok-k">return</span> <span class="tok-k">this</span>.name;
+    },
+  },
+};
+console.<span class="tok-f">log</span>(a.b.<span class="tok-f">show</span>());</code></pre><p>输出 <code>'b'</code>。<code>this</code> 只看最后一个点号左边是谁，这里是 <code>a.b</code>，不是 <code>a</code>。</p></div></details><details class="quiz"><summary>下面这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> obj = {
+  name: <span class="tok-s">'obj'</span>,
+  say: () =&gt; <span class="tok-k">this</span> === obj,
+};
+console.<span class="tok-f">log</span>(obj.<span class="tok-f">say</span>());</code></pre><p>输出 <code>false</code>。箭头函数的 <code>this</code> 来自外层作用域，不是 <code>obj</code>；<code>obj.say()</code> 怎么调用都改变不了这一点。</p></div></details><details class="quiz"><summary>call、apply、bind 三者有什么区别？</summary><div class="quiz-body"><p><code>call</code> 立即调用，参数逐个传；<code>apply</code> 立即调用，参数放在数组里传；<code>bind</code> 不调用，返回一个 <code>this</code> 已固定、还可以预填部分参数的新函数。</p></div></details><details class="quiz"><summary>下面这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">getName</span>() {
+  <span class="tok-k">return</span> <span class="tok-k">this</span>.name;
+}
+<span class="tok-k">const</span> a = { name: <span class="tok-s">'A'</span> };
+<span class="tok-k">const</span> b = { name: <span class="tok-s">'B'</span> };
+<span class="tok-k">const</span> bound = getName.<span class="tok-f">bind</span>(a);
+console.<span class="tok-f">log</span>(bound.<span class="tok-f">call</span>(b));</code></pre><p>输出 <code>'A'</code>。<code>bind</code> 之后 <code>this</code> 已经锁死为 <code>a</code>，后续用 <code>call(b)</code> 也改不掉。</p></div></details><details class="quiz"><summary>用 new 调用构造函数时，this 是什么？</summary><div class="quiz-body"><p>是 <code>new</code> 刚刚创建出来的那个新对象。构造函数执行前，<code>new</code> 先创建空对象、把它的原型指向构造函数的 <code>prototype</code>，再把这个对象作为 <code>this</code> 执行构造函数。</p></div></details><details class="quiz"><summary>严格模式下直接调用普通函数，this 是什么？为什么这样设计？</summary><div class="quiz-body"><p>是 <code>undefined</code>。非严格模式会把 <code>this</code> 兜底成全局对象，把「this 丢失」的错误藏起来；严格模式给 <code>undefined</code>，访问属性时立刻抛错，问题能当场暴露。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>写一个 <code>user</code> 对象，有 <code>name</code> 和 <code>say()</code>，先用 <code>user.say()</code> 正常调用，再把方法赋给变量调用，观察两次结果。 验收：能复现 <code>TypeError</code>（严格模式），并用自己的话解释为什么第二次 <code>this</code> 不是 <code>user</code>。</li></ol><ol><li>复现「回调里 this 丢失」：把 <code>user.say</code> 直接传给 <code>setTimeout</code>，然后用 <code>bind</code>、箭头函数、普通函数包一层三种方式分别修好。 验收：三种修法都输出 <code>小明</code>，能说出每种写法把 <code>this</code> 保住在哪一步。</li></ol><ol><li>手写 <code>myBind(fn, context, ...args)</code>，并用它绑定一个带两个参数的函数，验证预填参数和后续参数能正确拼接。 验收：<code>myBind(introduce, user, '你好')('！')</code> 返回 <code>你好，小明！</code>；不传预填参数时也能正常工作。</li></ol><p><strong>进阶</strong></p><ol><li>写一个 <code>Counter</code> class，用 class field 箭头函数实现 <code>add</code>，把 <code>add</code> 拆出来单独调用，证明 <code>this</code> 不会丢；再写一个普通方法版本对比报错。 验收：箭头版本连续调用输出 <code>1</code>、<code>2</code>；普通方法版本拆出来后抛 <code>TypeError</code>，并能解释差异。</li></ol><ol><li>实现一个 <code>bindAll(obj, methodNames)</code>，把对象上指定的方法全部绑定到 <code>obj</code>，返回一个新对象。要求原对象不被修改。 验收：解构或单独调用返回对象上的方法时，<code>this</code> 仍然指向原对象，输出正确。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p><code>this</code> 的规则只有一条主线：**调用方式决定 <code>this</code>**。遇到问题时，不要盯着函数定义看，先看调用那一行的点号左边是谁，或者它是不是被当成了回调。</p><p>第 11 章的 <code>class</code> 会把方法放到原型上，但调用规则和这里完全一致；第 15 章的事件委托、第 18 章的待办项目，都会出现「回调里的 this」。把这一章的三种修法练熟，后面能省很多调试时间。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="09.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="11.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"10","title":"this 到底指向谁"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

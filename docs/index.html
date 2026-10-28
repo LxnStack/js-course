@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JS 通勤课 · 从基础到全栈</title>
+<meta name="description" content="面向通勤阅读的 JavaScript 系统课程，每章记住阅读位置，可离线阅读。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="assets/base.css">
+</head>
+<body data-page="index">
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-title" style="text-align:left;color:var(--ink);font-weight:600;font-size:15px">JS 通勤课</div>
+    <a class="icon-btn" href="#settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>设置</a>
+  </div>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <span class="hero-kicker">JAVASCRIPT · 通勤速读版</span>
+    <h1>把每天的通勤，变成你的全栈起点</h1>
+    <p>20 章系统课程，从语法到异步、DOM、工程化。每章自动记住读到哪儿，下次打开接着读。</p>
+  </section>
+
+  <section class="dash">
+    <div class="ring" id="ring"><span id="ring-text">0%</span></div>
+    <div class="dash-body">
+      <div class="dash-label" id="dash-count">0 / 20 章已读完</div>
+      <div class="dash-title" id="dash-title">第 01 章 · 先想清楚：这条路怎么走</div>
+      <div class="dash-sub" id="dash-sub">还没开始</div>
+      <a class="btn-primary" id="continue-btn" href="ch/01.html">开始学习</a>
+    </div>
+  </section>
+
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="search-input" type="search" placeholder="搜索知识点，比如 闭包 / Promise / 事件委托" autocomplete="off">
+  </div>
+  <p class="dash-sub" id="search-empty" hidden style="margin:8px 0 0">没有匹配的章节，换个关键词试试。</p>
+
+  <div class="section-head">
+    <h2>课程目录</h2>
+    <span>按顺序读，别跳</span>
+  </div>
+  <ul class="chapter-list" id="chapter-list">
+      <a class="chapter-card" href="ch/01.html" data-id="01" data-search="先想清楚：这条路怎么走 这门课能带你到哪里、每天两小时怎么分配、手机和电脑各自负责什么，以及一份不容易半途而废的节奏表。 学习方法 通勤 路线图 工具 节奏 初学者">
+        <span class="chapter-no">01</span>
+        <span class="chapter-main">
+          <span class="chapter-name">先想清楚：这条路怎么走</span>
+          <span class="chapter-sum">这门课能带你到哪里、每天两小时怎么分配、手机和电脑各自负责什么，以及一份不容易半途而废的节奏表。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/02.html" data-id="02" data-search="变量与数据类型 从「给数据起名字」讲起，把 let/const、七种原始类型、null 与 undefined、typeof 的坑、类型转换和 0.1 + 0.2 一次讲透。 变量 let const 数据类型 typeof 类型转换 NaN 精度 null undefined">
+        <span class="chapter-no">02</span>
+        <span class="chapter-main">
+          <span class="chapter-name">变量与数据类型</span>
+          <span class="chapter-sum">从「给数据起名字」讲起，把 let/const、七种原始类型、null 与 undefined、typeof 的坑、类型转换和 0.1 + 0.2 一次讲透。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/03.html" data-id="03" data-search="运算符与表达式 从取余的真实用途讲到短路求值、空值合并与逻辑或的差别、优先级陷阱，把 JS 运算符一次讲清。 运算符 算术 取余 自增 比较 短路 逻辑 空值合并 可选链 三元 优先级">
+        <span class="chapter-no">03</span>
+        <span class="chapter-main">
+          <span class="chapter-name">运算符与表达式</span>
+          <span class="chapter-sum">从取余的真实用途讲到短路求值、空值合并与逻辑或的差别、优先级陷阱，把 JS 运算符一次讲清。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/04.html" data-id="04" data-search="流程控制：条件与循环 if 与 switch 怎么选、for 的三段式怎么执行、break 与 continue 的边界，以及死循环是怎么来的。 流程控制 if else switch for while do-while break continue 遍历 死循环">
+        <span class="chapter-no">04</span>
+        <span class="chapter-main">
+          <span class="chapter-name">流程控制：条件与循环</span>
+          <span class="chapter-sum">if 与 switch 怎么选、for 的三段式怎么执行、break 与 continue 的边界，以及死循环是怎么来的。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/05.html" data-id="05" data-search="函数：把逻辑装进盒子 三种函数写法怎么选、参数与返回值的真实规则、回调为什么到处都是，以及纯函数与递归的用法。 函数 函数声明 函数表达式 箭头函数 参数 默认值 返回值 回调 纯函数 递归">
+        <span class="chapter-no">05</span>
+        <span class="chapter-main">
+          <span class="chapter-name">函数：把逻辑装进盒子</span>
+          <span class="chapter-sum">三种函数写法怎么选、参数与返回值的真实规则、回调为什么到处都是，以及纯函数与递归的用法。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/06.html" data-id="06" data-search="数组与常用方法 从下标和增删讲起，分清 splice 与 slice，再把 map、filter、reduce、sort 练熟。 数组 length push pop splice slice map filter reduce sort 遍历 链式调用">
+        <span class="chapter-no">06</span>
+        <span class="chapter-main">
+          <span class="chapter-name">数组与常用方法</span>
+          <span class="chapter-sum">从下标和增删讲起，分清 splice 与 slice，再把 map、filter、reduce、sort 练熟。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/07.html" data-id="07" data-search="对象与 JSON 把一组相关数据装进对象，讲清属性访问、遍历、解构、浅拷贝与深拷贝，以及 JSON 转换时悄悄消失的字段。 对象 属性 JSON stringify parse 浅拷贝 深拷贝 展开 可选链 引用">
+        <span class="chapter-no">07</span>
+        <span class="chapter-main">
+          <span class="chapter-name">对象与 JSON</span>
+          <span class="chapter-sum">把一组相关数据装进对象，讲清属性访问、遍历、解构、浅拷贝与深拷贝，以及 JSON 转换时悄悄消失的字段。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/08.html" data-id="08" data-search="字符串、Math、Date 与正则 模板字符串与常用方法、Math 取整与随机数、Date 的时区坑，以及只做格式校验的正则入门。 字符串 模板字符串 Math random toFixed Date 时间戳 正则 regex test match 分组">
+        <span class="chapter-no">08</span>
+        <span class="chapter-main">
+          <span class="chapter-name">字符串、Math、Date 与正则</span>
+          <span class="chapter-sum">模板字符串与常用方法、Math 取整与随机数、Date 的时区坑，以及只做格式校验的正则入门。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/09.html" data-id="09" data-search="作用域、闭包与变量提升 变量到底住在哪里，为什么循环里的回调总打印同一个值，闭包能做什么、什么时候会拖住内存。 作用域 闭包 变量提升 TDZ 作用域链 内存 循环 IIFE">
+        <span class="chapter-no">09</span>
+        <span class="chapter-main">
+          <span class="chapter-name">作用域、闭包与变量提升</span>
+          <span class="chapter-sum">变量到底住在哪里，为什么循环里的回调总打印同一个值，闭包能做什么、什么时候会拖住内存。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/10.html" data-id="10" data-search="this 到底指向谁 用「看调用方式，不看定义位置」一句口诀，讲清五种调用场景、this 丢失的经典 bug，以及 call/apply/bind 的区别。 this 箭头函数 bind call apply 回调 丢失 严格模式">
+        <span class="chapter-no">10</span>
+        <span class="chapter-main">
+          <span class="chapter-name">this 到底指向谁</span>
+          <span class="chapter-sum">用「看调用方式，不看定义位置」一句口诀，讲清五种调用场景、this 丢失的经典 bug，以及 call/apply/bind 的区别。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/11.html" data-id="11" data-search="原型链与 class 从「方法为什么要共享」讲起，拆开 prototype、constructor、__proto__ 的关系，再把 class、继承、私有字段和 new 的过程讲透。 原型 prototype __proto__ constructor class 继承 new instanceof">
+        <span class="chapter-no">11</span>
+        <span class="chapter-main">
+          <span class="chapter-name">原型链与 class</span>
+          <span class="chapter-sum">从「方法为什么要共享」讲起，拆开 prototype、constructor、__proto__ 的关系，再把 class、继承、私有字段和 new 的过程讲透。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/12.html" data-id="12" data-search="ES6+ 必会语法 解构、展开、模板字符串、默认参数、可选链、Set 与 Map、for...of，把现代 JS 里每天都会遇到的写法一次讲透。 解构 展开 剩余参数 模板字符串 默认参数 可选链 空值合并 Set Map 可迭代">
+        <span class="chapter-no">12</span>
+        <span class="chapter-main">
+          <span class="chapter-name">ES6+ 必会语法</span>
+          <span class="chapter-sum">解构、展开、模板字符串、默认参数、可选链、Set 与 Map、for...of，把现代 JS 里每天都会遇到的写法一次讲透。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/13.html" data-id="13" data-search="异步：回调、Promise、async/await 从单线程为什么会被卡住讲起，用事件循环、Promise 三种状态和 async/await 把「等」这件事彻底说清。 异步 事件循环 宏任务 微任务 Promise async await 并发 回调">
+        <span class="chapter-no">13</span>
+        <span class="chapter-main">
+          <span class="chapter-name">异步：回调、Promise、async/await</span>
+          <span class="chapter-sum">从单线程为什么会被卡住讲起，用事件循环、Promise 三种状态和 async/await 把「等」这件事彻底说清。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/14.html" data-id="14" data-search="模块化与 npm 从全局变量互相覆盖讲起，把 ESM 与 CommonJS 的写法、package.json 每个字段、npm 命令和版本号规则一次说清。 模块化 ESM CommonJS npm package.json 依赖 语义化版本 node_modules">
+        <span class="chapter-no">14</span>
+        <span class="chapter-main">
+          <span class="chapter-name">模块化与 npm</span>
+          <span class="chapter-sum">从全局变量互相覆盖讲起，把 ESM 与 CommonJS 的写法、package.json 每个字段、npm 命令和版本号规则一次说清。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/15.html" data-id="15" data-search="DOM 与事件 从「浏览器把 HTML 变成树」讲起，学会选中、改写、增删页面元素，再用事件、冒泡与委托让页面真正响应操作。 DOM querySelector textContent innerHTML classList dataset 事件 冒泡 委托 表单 defer">
+        <span class="chapter-no">15</span>
+        <span class="chapter-main">
+          <span class="chapter-name">DOM 与事件</span>
+          <span class="chapter-sum">从「浏览器把 HTML 变成树」讲起，学会选中、改写、增删页面元素，再用事件、冒泡与委托让页面真正响应操作。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/16.html" data-id="16" data-search="浏览器存储与网络请求 把数据留在浏览器里，再用 fetch 从服务器取回来：localStorage 与 JSON 封装、HTTP 状态码、超时取消、CORS 与加载三态界面的完整写法一次讲清。 localStorage sessionStorage cookie IndexedDB JSON fetch POST 状态码 CORS AbortController">
+        <span class="chapter-no">16</span>
+        <span class="chapter-main">
+          <span class="chapter-name">浏览器存储与网络请求</span>
+          <span class="chapter-sum">把数据留在浏览器里，再用 fetch 从服务器取回来：localStorage 与 JSON 封装、HTTP 状态码、超时取消、CORS 与加载三态界面的完整写法一次讲清。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/17.html" data-id="17" data-search="错误处理与调试 读懂四类常见报错与调用栈，掌握 throw、try/catch/finally 和异步错误的处理方式，再用断点与 Network 面板把 bug 快速定位到具体一行。 错误处理 try catch finally throw Error 异常 调试 断点 Sources Network 报错">
+        <span class="chapter-no">17</span>
+        <span class="chapter-main">
+          <span class="chapter-name">错误处理与调试</span>
+          <span class="chapter-sum">读懂四类常见报错与调用栈，掌握 throw、try/catch/finally 和异步错误的处理方式，再用断点与 Network 面板把 bug 快速定位到具体一行。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/18.html" data-id="18" data-search="实战：写一个待办清单 从需求拆解到五个可运行版本，把表单、事件委托、筛选与 localStorage 组装成一个刷新不丢的待办清单。 实战 待办清单 Todo 状态与渲染 事件委托 data-id 筛选 localStorage 持久化">
+        <span class="chapter-no">18</span>
+        <span class="chapter-main">
+          <span class="chapter-name">实战：写一个待办清单</span>
+          <span class="chapter-sum">从需求拆解到五个可运行版本，把表单、事件委托、筛选与 localStorage 组装成一个刷新不丢的待办清单。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/19.html" data-id="19" data-search="从脚本到工程 把三个文件的练手项目变成可维护的工程：目录职责、npm 脚本、Vite 构建、代码规范、Git 版本管理与静态部署的完整流程。 工程化 目录结构 package.json Vite 构建 dist Prettier ESLint gitignore Git 部署 README">
+        <span class="chapter-no">19</span>
+        <span class="chapter-main">
+          <span class="chapter-name">从脚本到工程</span>
+          <span class="chapter-sum">把三个文件的练手项目变成可维护的工程：目录职责、npm 脚本、Vite 构建、代码规范、Git 版本管理与静态部署的完整流程。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+      <a class="chapter-card" href="ch/20.html" data-id="20" data-search="下一步：TypeScript、Node 与小程序 学完 JS 之后往哪走：用 TypeScript 提前发现错误、用 Node 写第一个接口、用小程序把作品装进微信，并给出三个月路线与项目清单。 TypeScript Node Express 接口 小程序 Taro uni-app 学习路线 查文档 提问">
+        <span class="chapter-no">20</span>
+        <span class="chapter-main">
+          <span class="chapter-name">下一步：TypeScript、Node 与小程序</span>
+          <span class="chapter-sum">学完 JS 之后往哪走：用 TypeScript 提前发现错误、用 Node 写第一个接口、用小程序把作品装进微信，并给出三个月路线与项目清单。</span>
+        </span>
+        <span class="chapter-state">未开始</span>
+      </a>
+  </ul>
+
+  <section class="panel" id="settings">
+    <h2>阅读设置</h2>
+    <div class="setting-row">
+      <span>主题</span>
+      <div class="seg">
+        <button type="button" data-theme-set="auto">跟随系统</button>
+        <button type="button" data-theme-set="light">浅色</button>
+        <button type="button" data-theme-set="dark">深色</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <span>正文字号</span>
+      <div class="seg">
+        <button type="button" data-font-set="16">小</button>
+        <button type="button" data-font-set="17">标准</button>
+        <button type="button" data-font-set="19">大</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <span>进度备份</span>
+      <div class="btn-row" style="margin:0">
+        <button class="btn-ghost" type="button" id="export-btn">导出</button>
+        <label class="btn-ghost" style="cursor:pointer">导入
+          <input id="import-input" type="file" accept="application/json,.json" style="display:none">
+        </label>
+      </div>
+    </div>
+    <div class="setting-row">
+      <span>清空本机进度</span>
+      <button class="btn-ghost" type="button" id="reset-btn">重置</button>
+    </div>
+  </section>
+
+  <section class="panel" id="install-hint">
+    <h2>把课程装到手机上</h2>
+    <details>
+      <summary><span>iPhone / iPad</span></summary>
+      <div class="body">
+        <p>用 Safari 打开本页，点底部「分享」按钮，选择「添加到主屏幕」。之后从桌面图标进入，全屏阅读、可离线。</p>
+      </div>
+    </details>
+    <details>
+      <summary><span>Android</span></summary>
+      <div class="body">
+        <p>用 Chrome 打开本页，右上角菜单里选择「添加到主屏幕 / 安装应用」。第一次打开后所有章节会缓存到本机，地铁里没信号也能读。</p>
+      </div>
+    </details>
+    <details>
+      <summary><span>进度是怎么记录的</span></summary>
+      <div class="body">
+        <p>进度保存在当前浏览器的本地存储里：每章的已读状态、上次滚动位置、最后打开的章节。换设备或清理浏览器数据会丢失，所以可以在上面「进度备份」里导出 JSON，换设备后导入。</p>
+        <p>手机和平板各记各的进度，互不影响。</p>
+      </div>
+    </details>
+  </section>
+
+  <p class="footnote">
+    建议节奏：通勤读 1 章，晚上在电脑上把练习敲一遍。<br>
+    读不懂的地方先标记，继续往下读，第二遍再补。
+  </p>
+</main>
+
+<script src="assets/course-data.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

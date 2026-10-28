@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>错误处理与调试 · JS 通勤课</title>
+<meta name="description" content="读懂四类常见报错与调用栈，掌握 throw、try/catch/finally 和异步错误的处理方式，再用断点与 Network 面板把 bug 快速定位到具体一行。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">错误处理与调试</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 17 章 · 约 38 分钟</div>
+    <h1>错误处理与调试</h1>
+    <p class="lede">读懂四类常见报错与调用栈，掌握 throw、try/catch/finally 和异步错误的处理方式，再用断点与 Network 面板把 bug 快速定位到具体一行。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>写代码的时间只占一小部分，剩下的大部分时间在找「为什么它不按我想的运行」。</p><p>这一章教你两件事：一是让错误<strong>可控地失败</strong>，该提示的提示、该兜底的兜底；二是让错误<strong>可被定位</strong>，看到一段红色报错时知道先看哪一行。</p><p>第 16 章的 <code>fetch</code> 和 <code>try/catch</code> 已经出现过，这一章把它们讲透。第 18 章的项目里，你会不断用到这里的排查流程。</p></blockquote><h2>为什么需要它</h2><p>先看一个很短的脚本：</p><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-s">'开始'</span>);
+
+<span class="tok-k">const</span> user = <span class="tok-k">undefined</span>;
+console.<span class="tok-f">log</span>(user.name);
+
+console.<span class="tok-f">log</span>(<span class="tok-s">'这行不会执行'</span>);</code></pre><pre><code class="lang-text">开始
+Uncaught TypeError: Cannot read properties of undefined (reading 'name')</code></pre><p>第三行报错之后，第四行永远不会执行。浏览器不会「跳过这一行继续往下跑」，整个脚本就此停住。</p><p>这解释了很多「点了没反应」的现象：按钮的点击回调里，第一行取数据就报错了，后面更新界面、关闭弹窗、清空输入全都没跑到。用户看到的是「按钮坏了」，控制台里其实只有一行红字。</p><p>更隐蔽的是异步场景：一个请求失败，<code>catch</code> 里什么也没写，页面一直停在「加载中」，用户既不知道发生了什么，也不知道该不该等。</p><p>错误处理不是给代码加一堆保险，而是明确三件事：</p><ul><li>哪些失败是<strong>预期内</strong>的（用户没填、网络断了、数据不存在），要给提示或兜底</li><li>哪些是<strong>代码 bug</strong>（读错属性、拼错方法），要让它尽快暴露，而不是被吞掉</li><li>出错之后，<strong>哪些收尾必须做</strong>（关 loading、释放定时器、恢复按钮）</li></ul><h2>四类常见错误</h2><p>JS 的错误对象都有 <code>name</code> 和 <code>message</code>。<code>name</code> 是大类，<code>message</code> 是具体描述。先认识四个大类：</p><div class="table-wrap"><table><thead><tr><th>类型</th><th>发生时机</th><th>典型文案</th><th>常见原因</th></tr></thead><tbody><tr><td><code>SyntaxError</code></td><td>解析阶段，或解析 JSON 时</td><td><code>Invalid or unexpected token</code></td><td>缺括号、引号不配对、中文标点、坏 JSON</td></tr><tr><td><code>TypeError</code></td><td>运行时</td><td><code>Cannot read properties of undefined (reading 'name')</code></td><td>对错误类型做操作，如读 undefined 的属性</td></tr><tr><td><code>ReferenceError</code></td><td>运行时</td><td><code>notDeclared is not defined</code></td><td>变量没声明、拼错、超出作用域</td></tr><tr><td><code>RangeError</code></td><td>运行时</td><td><code>Maximum call stack size exceeded</code></td><td>递归没有终止条件、数组长度非法</td></tr></tbody></table></div><p>下面这段可以一次跑完，每段单独 <code>try/catch</code>，所以不会互相打断：</p><pre><code class="lang-js"><span class="tok-c">// TypeError：读 undefined 的属性</span>
+<span class="tok-k">try</span> {
+  <span class="tok-k">const</span> user = {};
+  console.<span class="tok-f">log</span>(user.profile.name);
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">log</span>(err.name, <span class="tok-s">'-'</span>, err.message);
+}
+<span class="tok-c">// 输出: TypeError - Cannot read properties of undefined (reading 'name')</span>
+
+<span class="tok-c">// ReferenceError：变量根本不存在</span>
+<span class="tok-k">try</span> {
+  console.<span class="tok-f">log</span>(notDeclared);
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">log</span>(err.name, <span class="tok-s">'-'</span>, err.message);
+}
+<span class="tok-c">// 输出: ReferenceError - notDeclared is not defined</span>
+
+<span class="tok-c">// RangeError：递归没有出口</span>
+<span class="tok-k">function</span> <span class="tok-f">recurse</span>() {
+  <span class="tok-f">recurse</span>();
+}
+
+<span class="tok-k">try</span> {
+  <span class="tok-f">recurse</span>();
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">log</span>(err.name, <span class="tok-s">'-'</span>, err.message);
+}
+<span class="tok-c">// 输出: RangeError - Maximum call stack size exceeded</span></code></pre><p><code>SyntaxError</code> 要单独说，因为它分两种。一种是代码本身写错了，浏览器在<strong>执行前</strong>解析阶段就发现，整个 <code>script</code> 一行都不会跑：</p><pre><code class="lang-text">console.log('hi'
+// Uncaught SyntaxError: Invalid or unexpected token</code></pre><p>这种错误无法用 <code>try/catch</code> 捕获，因为代码还没开始执行。你只能看控制台报的行号，回去改源码。最常见的原因是少一个右括号、引号不配对，或者从文章里复制了中文全角引号 <code>“”</code>。</p><p>另一种是运行时解析字符串，比如 <code>JSON.parse</code> 收到坏数据，这种能被 <code>catch</code>：</p><pre><code class="lang-js"><span class="tok-k">try</span> {
+  JSON.<span class="tok-f">parse</span>(<span class="tok-s">'{bad}'</span>);
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">log</span>(err.name);      <span class="tok-c">// 输出: SyntaxError</span>
+  console.<span class="tok-f">log</span>(err.message);   <span class="tok-c">// 提示 JSON 格式不对，具体文案随浏览器版本略有差异</span>
+}</code></pre><p>记住一个判断顺序：**先看 <code>name</code>，再看 <code>message</code>，最后看栈追踪的第一帧**。不要被整段红字吓到，真正有用的信息就在前三行。</p><h2>读栈追踪：错误从哪来</h2><p>把上面的 <code>user.name</code> 放进一个函数调用里，控制台会给出更完整的信息：</p><pre><code class="lang-text">Uncaught TypeError: Cannot read properties of undefined (reading 'name')
+    at showUser (app.js:12:15)
+    at init (app.js:20:3)
+    at app.js:24:1</code></pre><p>第一行是错误类型和消息。下面每一行 <code>at ...</code> 是调用链的一层：</p><ul><li><code>at showUser (app.js:12:15)</code>：错误发生在 <code>showUser</code> 函数里，文件 <code>app.js</code> 第 12 行、第 15 列</li><li><code>at init (app.js:20:3)</code>：<code>showUser</code> 是被 <code>init</code> 在第 20 行调用的</li><li><code>at app.js:24:1</code>：<code>init</code> 又是在文件顶层第 24 行被调用的</li></ul><p>顺序是<strong>从内到外</strong>：最上面是出错的位置，越往下越接近程序入口。读的时候先找第一行属于你自己代码的帧，那里通常就是问题源头。</p><p>点击文件名，浏览器会跳到 Sources 面板对应的行。线上代码经过压缩后，变量名会变成 <code>a</code>、<code>b</code>，行号也对不上，这时需要 source map 才能还原。本地开发不用管这个。</p><p>如果栈里出现 <code>node_modules</code>、<code>react-dom</code> 这类路径，说明错误是从框架内部抛出来的，但真正的原因往往在你传进去的数据。先看第一个属于你项目的帧。</p><h2>throw：主动抛出错误</h2><p>不是所有错误都来自浏览器。你也可以在代码发现「不该继续」时主动停下：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">divide</span>(a, b) {
+  <span class="tok-k">if</span> (b === <span class="tok-n">0</span>) {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'除数不能为 0'</span>);
+  }
+  <span class="tok-k">return</span> a / b;
+}
+
+<span class="tok-k">try</span> {
+  <span class="tok-f">divide</span>(<span class="tok-n">1</span>, <span class="tok-n">0</span>);
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">log</span>(err.name);          <span class="tok-c">// 输出: Error</span>
+  console.<span class="tok-f">log</span>(err.message);       <span class="tok-c">// 输出: 除数不能为 0</span>
+  console.<span class="tok-f">log</span>(<span class="tok-k">typeof</span> err.stack);  <span class="tok-c">// 输出: string</span>
+}</code></pre><p><code>throw</code> 会立刻结束当前函数，把控制权交给最近的 <code>catch</code>。没有 <code>catch</code>，就是「未捕获错误」，当前脚本停止。</p><p><code>Error</code> 对象有三个常用属性：<code>name</code> 是类型名，<code>message</code> 是你写的描述，<code>stack</code> 是调用栈字符串。<code>stack</code> 不是标准强制要求，但所有主流浏览器和 Node 都支持，调试时非常有用。</p><p>可以 <code>throw</code> 任何值，比如 <code>throw '出错了'</code>、<code>throw 404</code>。不要这么做：字符串没有 <code>stack</code>，<code>catch</code> 里拿到的就是一个普通字符串，你无法知道它从哪来。**永远抛 <code>Error</code> 对象**。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p><code>throw</code> 之后的代码不会执行，包括同一函数里的 <code>return</code> 和收尾逻辑。如果函数中间申请了资源、开了 loading，要放在 <code>finally</code> 里清理，不能指望 <code>throw</code> 之后的语句。</p></div><h2>自定义错误类型</h2><p>项目大了以后，「出错了」这三个字不够用。调用方需要知道是<strong>校验失败</strong>、<strong>未登录</strong>还是<strong>网络超时</strong>，才能决定怎么处理。做法是继承 <code>Error</code>：</p><pre><code class="lang-js"><span class="tok-k">class</span> ValidationError <span class="tok-k">extends</span> Error {
+  <span class="tok-f">constructor</span>(message, field) {
+    <span class="tok-k">super</span>(message);              <span class="tok-c">// 必须先调用，初始化 message 和 stack</span>
+    <span class="tok-k">this</span>.name = <span class="tok-s">'ValidationError'</span>;
+    <span class="tok-k">this</span>.field = field;
+  }
+}
+
+<span class="tok-k">function</span> <span class="tok-f">checkAge</span>(age) {
+  <span class="tok-k">if</span> (!Number.<span class="tok-f">isInteger</span>(age) || age &lt; <span class="tok-n">0</span>) {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">ValidationError</span>(<span class="tok-s">'年龄必须是非负整数'</span>, <span class="tok-s">'age'</span>);
+  }
+  <span class="tok-k">return</span> age;
+}
+
+<span class="tok-k">try</span> {
+  <span class="tok-f">checkAge</span>(-<span class="tok-n">1</span>);
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">log</span>(err <span class="tok-k">instanceof</span> ValidationError);  <span class="tok-c">// 输出: true</span>
+  console.<span class="tok-f">log</span>(err.name);                        <span class="tok-c">// 输出: ValidationError</span>
+  console.<span class="tok-f">log</span>(err.field);                       <span class="tok-c">// 输出: age</span>
+  console.<span class="tok-f">log</span>(err.message);                     <span class="tok-c">// 输出: 年龄必须是非负整数</span>
+}</code></pre><p>三个要点：<code>super(message)</code> 必须第一行调用，否则 <code>this</code> 不能用；把 <code>name</code> 改成自己的类名，控制台里才看得懂；额外字段（这里是 <code>field</code>）用来携带结构化信息。</p><p><code>instanceof</code> 能区分错误类型。调用方可以据此把错误显示到对应输入框，而不是笼统弹一个「操作失败」。</p><p>不要给每个小函数都定义错误类。只有「调用方需要根据类型做不同处理」时才值得，比如校验错误、权限错误、网络错误这三类。</p><h2>try / catch / finally 的执行顺序</h2><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">test</span>() {
+  <span class="tok-k">try</span> {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'1 try'</span>);
+    <span class="tok-k">return</span> <span class="tok-s">'try 的返回值'</span>;
+  } <span class="tok-k">finally</span> {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'2 finally'</span>);
+  }
+}
+
+console.<span class="tok-f">log</span>(<span class="tok-f">test</span>());
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// 1 try</span>
+<span class="tok-c">// 2 finally</span>
+<span class="tok-c">// try 的返回值</span></code></pre><p><code>try</code> 里的 <code>return</code> 先把返回值算出来，然后 <code>finally</code> 执行，最后函数才真正返回。这个顺序很多人第一次会猜错。</p><p><code>finally</code> 里也可以写 <code>return</code>，它会<strong>覆盖</strong> <code>try</code> 的返回值：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">override</span>() {
+  <span class="tok-k">try</span> {
+    <span class="tok-k">return</span> <span class="tok-s">'try'</span>;
+  } <span class="tok-k">finally</span> {
+    <span class="tok-k">return</span> <span class="tok-s">'finally'</span>;
+  }
+}
+
+console.<span class="tok-f">log</span>(<span class="tok-f">override</span>());   <span class="tok-c">// 输出: finally</span></code></pre><p>这是反模式。<code>finally</code> 的职责是收尾，不是决定返回值。看到这种代码，把它改掉。</p><p>完整的执行规则只有四条：</p><ol><li><code>try</code> 正常结束，跳过 <code>catch</code>，执行 <code>finally</code></li><li><code>try</code> 里抛错，跳到 <code>catch</code>，执行 <code>finally</code></li><li><code>catch</code> 里又抛错，<code>finally</code> 仍然执行，然后错误继续往外传</li><li>无论走哪条路，<code>finally</code> 都执行（除非进程直接退出）</li></ol><p><code>finally</code> 最典型的用途是收尾：关闭 loading、清除定时器、断开连接、恢复按钮。</p><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">load</span>() {
+  <span class="tok-f">setLoading</span>(<span class="tok-k">true</span>);
+  <span class="tok-k">try</span> {
+    <span class="tok-k">const</span> data = <span class="tok-k">await</span> <span class="tok-f">request</span>(<span class="tok-s">'/api/users'</span>);
+    <span class="tok-f">render</span>(data);
+  } <span class="tok-k">catch</span> (err) {
+    <span class="tok-f">showError</span>(err.message);
+  } <span class="tok-k">finally</span> {
+    <span class="tok-f">setLoading</span>(<span class="tok-k">false</span>);      <span class="tok-c">// 成功失败都要关掉 loading</span>
+  }
+}</code></pre><h3>catch 的参数可以省略</h3><p>如果你不打算使用错误对象，<code>catch</code> 后面可以不写参数：</p><pre><code class="lang-js"><span class="tok-k">try</span> {
+  JSON.<span class="tok-f">parse</span>(<span class="tok-s">'{bad}'</span>);
+} <span class="tok-k">catch</span> {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'解析失败，使用默认值'</span>);
+}</code></pre><p>这个写法是 ES2019 加入的。它的好处是明确表达「我不关心具体错误」，坏处是容易变成吞错误的入口。只有在你确实有兜底方案时才这么写。</p><h2>不要写空 catch</h2><p>这是初学者最容易犯、后果最严重的一个错误：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">saveData</span>() {
+  <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'磁盘满了'</span>);
+}
+
+<span class="tok-k">function</span> <span class="tok-f">showToast</span>(message) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'提示：'</span>, message);
+}
+
+<span class="tok-c">// 反例：错误被吃掉，出问题完全查不到</span>
+<span class="tok-k">try</span> {
+  <span class="tok-f">saveData</span>();
+} <span class="tok-k">catch</span> (err) {}
+
+<span class="tok-c">// 正例：记录细节 + 给用户可理解的反馈</span>
+<span class="tok-k">try</span> {
+  <span class="tok-f">saveData</span>();
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">error</span>(<span class="tok-s">'保存失败'</span>, err);
+  <span class="tok-f">showToast</span>(<span class="tok-s">'保存失败，请重试'</span>);
+}</code></pre><p>空 <code>catch</code> 等于告诉程序「出什么事都当没发生」。数据没存上，用户以为存上了；请求失败了，页面显示成功。等几天后用户来投诉，你连日志都没有。</p><p>「不要吞掉」不等于「每个 catch 都要弹窗」。按场景分三种处理方式：</p><div class="table-wrap"><table><thead><tr><th>场景</th><th>处理方式</th></tr></thead><tbody><tr><td>有明确兜底（坏数据用默认值）</td><td>返回默认值，同时 <code>console.warn</code> 记录</td></tr><tr><td>能给用户正确提示（网络失败）</td><td>提示 + 记录，必要时重试</td></tr><tr><td>处理不了（未知 bug）</td><td>补充上下文后 <code>throw</code> 出去，让它暴露</td></tr></tbody></table></div><p>第三种经常被忽略。捕获了却不知道怎么处理，最好的做法是加上「当时在做什么」再抛出去：</p><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">loadUser</span>(id) {
+  <span class="tok-k">try</span> {
+    <span class="tok-k">const</span> res = <span class="tok-k">await</span> <span class="tok-f">fetch</span>(<span class="tok-s">`/api/users/${id}`</span>);
+    <span class="tok-k">if</span> (!res.ok) <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">`HTTP ${res.status}`</span>);
+    <span class="tok-k">return</span> <span class="tok-k">await</span> res.<span class="tok-f">json</span>();
+  } <span class="tok-k">catch</span> (err) {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">`加载用户 ${id} 失败`</span>, { cause: err });
+  }
+}</code></pre><p><code>cause</code> 是 ES2022 加入的，用来保留原始错误。调用方看到的是「加载用户 42 失败」，展开 <code>err.cause</code> 还能看到真正的原因。Chrome、Firefox 和 Node 16.9+ 都支持。</p><h2>异步里的错误</h2><p>同步代码的 <code>try/catch</code> 很直观，异步就不一样了。先看正确写法：</p><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">load</span>() {
+  <span class="tok-k">try</span> {
+    <span class="tok-k">const</span> res = <span class="tok-k">await</span> <span class="tok-f">fetch</span>(<span class="tok-s">'/api/users'</span>);
+    <span class="tok-k">if</span> (!res.ok) <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">`HTTP ${res.status}`</span>);
+
+    <span class="tok-k">const</span> data = <span class="tok-k">await</span> res.<span class="tok-f">json</span>();
+    console.<span class="tok-f">log</span>(data);
+  } <span class="tok-k">catch</span> (err) {
+    console.<span class="tok-f">error</span>(<span class="tok-s">'加载失败'</span>, err.message);
+  }
+}</code></pre><p><code>await</code> 会把 Promise 的拒绝「翻译成」同步抛错，所以 <code>try/catch</code> 能接住。注意它只能接住<strong>网络层失败和 404 的判断</strong>，<code>fetch</code> 对 4xx/5xx 本身不 reject，第 16 章讲过。</p><p>最常见的错误是**忘了 <code>await</code>**：</p><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">loadData</span>() {
+  <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'接口挂了'</span>);
+}
+
+<span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">wrong</span>() {
+  <span class="tok-k">try</span> {
+    <span class="tok-f">loadData</span>();          <span class="tok-c">// 没有 await</span>
+  } <span class="tok-k">catch</span> (err) {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'抓不到'</span>);
+  }
+}
+
+<span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">right</span>() {
+  <span class="tok-k">try</span> {
+    <span class="tok-k">await</span> <span class="tok-f">loadData</span>();
+  } <span class="tok-k">catch</span> (err) {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'抓到了'</span>, err.message);
+  }
+}
+
+<span class="tok-f">wrong</span>();   <span class="tok-c">// 控制台出现未处理的 Promise 拒绝</span>
+<span class="tok-f">right</span>();   <span class="tok-c">// 输出: 抓到了 接口挂了</span></code></pre><p><code>loadData()</code> 返回的是一个 Promise，错误在 Promise 内部，<code>try/catch</code> 只能捕获同步抛出的东西。没有 <code>await</code>，函数调用本身不会抛错，拒绝发生在之后。</p><p>另一种抓不到的情况是回调：</p><pre><code class="lang-js"><span class="tok-k">try</span> {
+  <span class="tok-f">setTimeout</span>(() =&gt; {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'定时器里炸了'</span>);
+  }, <span class="tok-n">0</span>);
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'抓不到'</span>);
+}
+
+<span class="tok-f">setTimeout</span>(() =&gt; {
+  <span class="tok-k">try</span> {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'定时器里炸了'</span>);
+  } <span class="tok-k">catch</span> (err) {
+    console.<span class="tok-f">error</span>(<span class="tok-s">'自己抓到了'</span>, err.message);
+  }
+}, <span class="tok-n">0</span>);</code></pre><p>定时器回调执行时，早就离开了 <code>try</code> 的调用栈。错误处理必须写在回调内部。</p><p>不用 <code>async/await</code> 时，用 <code>.catch()</code>：</p><pre><code class="lang-js"><span class="tok-f">fetch</span>(<span class="tok-s">'/api/data'</span>)
+  .<span class="tok-f">then</span>((res) =&gt; res.<span class="tok-f">json</span>())
+  .<span class="tok-k">catch</span>((err) =&gt; console.<span class="tok-f">error</span>(<span class="tok-s">'请求失败'</span>, err));</code></pre><p>漏掉 <code>.catch()</code> 会产生「未处理的 Promise 拒绝」（unhandled rejection）。浏览器会在控制台报错，但不会自动帮你恢复界面。可以加一个全局兜底，用来记录日志，不能当成主要处理手段：</p><pre><code class="lang-js">window.<span class="tok-f">addEventListener</span>(<span class="tok-s">'unhandledrejection'</span>, (event) =&gt; {
+  console.<span class="tok-f">error</span>(<span class="tok-s">'未处理的 Promise 拒绝'</span>, event.reason);
+});</code></pre><div class="callout callout-warn"><span class="callout-label">注意</span><p><code>try/catch</code> 不是越包越好。把整个函数包起来，看似「防崩」，实际会让你失去精确的错误位置。只包<strong>可能失败、且你知道怎么处理</strong>的那几行，其余让它自然抛出。</p></div><h2>防御性写法：在错误发生前拦住</h2><p>很多错误不用 <code>try/catch</code>，靠写代码时多想一步就能避免。</p><p><strong>可选链</strong>（optional chaining）用于「这个值可能不存在」：</p><pre><code class="lang-js"><span class="tok-k">const</span> user = <span class="tok-k">null</span>;
+
+<span class="tok-k">const</span> name = user?.profile?.name ?? <span class="tok-s">'匿名'</span>;
+console.<span class="tok-f">log</span>(name);   <span class="tok-c">// 输出: 匿名</span>
+
+<span class="tok-k">const</span> count = <span class="tok-n">0</span>;
+console.<span class="tok-f">log</span>(count ?? <span class="tok-n">10</span>);   <span class="tok-c">// 输出: 0</span>
+console.<span class="tok-f">log</span>(count || <span class="tok-n">10</span>);   <span class="tok-c">// 输出: 10，因为 0 是假值</span></code></pre><p><code>?.</code> 遇到 <code>null</code> 或 <code>undefined</code> 就短路，整个链条返回 <code>undefined</code>，不会继续读后面的属性。注意每一层都可能为空时要写多个 <code>?.</code>：<code>user?.profile.name</code> 在 <code>user</code> 存在但 <code>profile</code> 不存在时仍然会报错。</p><p><code>??</code> 只在左边是 <code>null</code> 或 <code>undefined</code> 时取右边。<code>||</code> 把 <code>0</code>、<code>''</code>、<code>false</code> 也当假值，用它给数字或布尔值兜底会得到错误结果。这个坑第 3 章提过，在配置项和计数场景里特别常见。</p><p><strong>在边界做校验</strong>，比在每一行后面加判断更有效：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">createUser</span>(input) {
+  <span class="tok-k">if</span> (input == <span class="tok-k">null</span> || <span class="tok-k">typeof</span> input.name !== <span class="tok-s">'string'</span>) {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">TypeError</span>(<span class="tok-s">'createUser 需要一个带 name 的对象'</span>);
+  }
+
+  <span class="tok-k">const</span> name = input.name.<span class="tok-f">trim</span>();
+  <span class="tok-k">if</span> (name === <span class="tok-s">''</span>) {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'name 不能为空'</span>);
+  }
+
+  <span class="tok-k">return</span> { name };
+}
+
+console.<span class="tok-f">log</span>(<span class="tok-f">createUser</span>({ name: <span class="tok-s">' 小明 '</span> }));   <span class="tok-c">// 输出: { name: '小明' }</span>
+
+<span class="tok-k">try</span> {
+  <span class="tok-f">createUser</span>({});
+} <span class="tok-k">catch</span> (err) {
+  console.<span class="tok-f">error</span>(err.message);   <span class="tok-c">// 输出: createUser 需要一个带 name 的对象</span>
+}</code></pre><p>「边界」指数据进入你系统的入口：用户输入、接口响应、URL 参数、函数对外暴露的参数。在这些地方校验一次，内部代码就可以信任数据，不用层层判断。</p><p>区分两种缺失：</p><ul><li><strong>预期内的缺失</strong>：接口可选字段、用户没填的昵称，用 <code>?.</code> 和默认值</li><li><strong>不该发生的缺失</strong>：必填的 <code>id</code>、初始化后的配置，应该直接报错</li></ul><p>用可选链去「安抚」一个本该存在的值，只会把 bug 推迟到更远的地方，错误信息更难懂。</p><h2>调试：console 家族</h2><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-s">'普通信息'</span>, { id: <span class="tok-n">1</span> });
+console.<span class="tok-f">warn</span>(<span class="tok-s">'警告：存储快满了'</span>);
+console.<span class="tok-f">error</span>(<span class="tok-s">'错误：请求失败'</span>);
+
+console.<span class="tok-f">table</span>([
+  { name: <span class="tok-s">'小明'</span>, age: <span class="tok-n">18</span> },
+  { name: <span class="tok-s">'小红'</span>, age: <span class="tok-n">20</span> },
+]);
+
+console.<span class="tok-f">group</span>(<span class="tok-s">'用户信息'</span>);
+console.<span class="tok-f">log</span>(<span class="tok-s">'name: 小明'</span>);
+console.<span class="tok-f">log</span>(<span class="tok-s">'age: 18'</span>);
+console.<span class="tok-f">groupEnd</span>();
+
+console.<span class="tok-f">time</span>(<span class="tok-s">'渲染列表'</span>);
+<span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">0</span>; i &lt; <span class="tok-n">1000</span>; i++) {}
+console.<span class="tok-f">timeEnd</span>(<span class="tok-s">'渲染列表'</span>);   <span class="tok-c">// 输出类似: 渲染列表: 0.12 ms</span></code></pre><p>几个使用要点：</p><ul><li>打印对象时直接传对象，不要 <code>'user: ' + user</code>，那样只会得到 <code>[object Object]</code></li><li><code>console.table</code> 把数组或对象打印成表格，看字段多的一批数据非常直观</li><li><code>console.group</code> 和 <code>groupEnd</code> 把一组日志折叠在一起，排查多步流程时避免刷屏</li><li><code>console.time</code> 和 <code>timeEnd</code> 的标签必须一致，用来粗略测耗时</li><li><code>console.trace()</code> 会打印当前调用栈，比 <code>console.log</code> 多告诉你「谁调用了这里」</li></ul><p>日志不是越多越好。在循环里打一百条，你反而找不到关键那条。更高效的办法是断点。</p><h2>断点：让代码停在你想看的地方</h2><p>打开开发者工具的 Sources 面板，<code>Ctrl + P</code> 搜索文件名，点行号左侧的空白处，就设置了一个断点。代码执行到这一行会暂停，整个页面的状态冻结，你可以慢慢看。</p><p>三种断点方式，对应三种场景：</p><div class="table-wrap"><table><thead><tr><th>方式</th><th>怎么设</th><th>什么时候用</th></tr></thead><tbody><tr><td>普通断点</td><td>点行号左侧</td><td>知道大概哪几行有问题</td></tr><tr><td>条件断点</td><td>右键行号，选 Add conditional breakpoint，填表达式</td><td>循环第 50 次才出错，不想停 49 次</td></tr><tr><td><code>debugger</code> 语句</td><td>代码里写 <code>debugger;</code></td><td>临时排查，改完必须删掉</td></tr></tbody></table></div><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">findBug</span>(items) {
+  <span class="tok-k">let</span> total = <span class="tok-n">0</span>;
+
+  <span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">0</span>; i &lt; items.length; i++) {
+    <span class="tok-k">debugger</span>;             <span class="tok-c">// 每次循环都会暂停，适合临时排查</span>
+    total += items[i].price;
+  }
+
+  <span class="tok-k">return</span> total;
+}
+
+<span class="tok-f">findBug</span>([{ price: <span class="tok-n">10</span> }, { price: <span class="tok-n">20</span> }]);</code></pre><p><code>debugger</code> 只在开发者工具打开时生效，但<strong>不要提交到代码里</strong>。别人打开页面会莫名其妙停住。</p><p>暂停之后，右侧面板有几个关键区域：</p><ul><li><strong>Scope</strong>：当前作用域里的所有变量，包括闭包和全局</li><li><strong>Watch</strong>：你手动添加的表达式，比如 <code>items.length</code>、<code>user.name</code>，每步都重新求值</li><li><strong>Call Stack</strong>：调用链，点任意一帧可以跳到那层代码，看当时的变量</li><li><strong>Breakpoints</strong>：所有断点列表，可以临时禁用</li></ul><p>单步按钮对应四种操作：</p><div class="table-wrap"><table><thead><tr><th>操作</th><th>快捷键</th><th>什么时候用</th></tr></thead><tbody><tr><td>Step over</td><td>F10</td><td>执行下一行，不进函数。大多数时候用这个</td></tr><tr><td>Step into</td><td>F11</td><td>进入当前行调用的函数，怀疑问题在函数内部时用</td></tr><tr><td>Step out</td><td>Shift + F11</td><td>不小心进太深，直接跑完当前函数回到调用处</td></tr><tr><td>Resume</td><td>F8</td><td>继续跑到下一个断点</td></tr></tbody></table></div><p>还有「Pause on exceptions」开关（Sources 面板右上角的暂停图标），可以让代码在抛错的那一刻自动停下，而不是等错误冒到控制台。调试「错误被别处 catch 吃掉」的问题时特别有用。</p><p>断点比 <code>console.log</code> 强在：不修改代码、能看到全部变量、能回退调用栈、能逐行观察变化。循环里尤其明显，日志会刷屏，断点只会停在你关心的那一次。</p><h2>Network 面板：接口问题在这里定位</h2><p>页面数据不对，先分清是「前端渲染错了」还是「请求就没拿到」。Network 面板回答后者。</p><p>打开面板，刷新页面，勾选 <code>Fetch/XHR</code> 过滤，能看到每个请求的：</p><ul><li><strong>Name / URL</strong>：请求地址对不对，有没有拼错路径</li><li><strong>Status</strong>：200、404、500，或者 <code>(failed)</code>、<code>(canceled)</code></li><li><strong>Method</strong>：GET 还是 POST</li><li><strong>Payload</strong>：请求体，POST 时检查字段有没有发出去</li><li><strong>Response</strong>：服务器返回的原始内容</li><li><strong>Timing</strong>：各阶段耗时，判断是网络慢还是服务器慢</li></ul><p>点进一个请求，重点看四块：Headers 里的 <code>Content-Type</code> 和 CORS 响应头、Payload 里的请求参数、Response 里的真实返回、Preview 里的格式化结果。</p><p>几个实用操作：勾选 <code>Preserve log</code>，页面跳转后请求记录不丢；右键请求选 <code>Copy as fetch</code>，把浏览器实际发出的请求复制成代码，方便对比你写的参数；<code>Copy as cURL</code> 可以贴到终端复现，用来确认「是不是只有浏览器不行」。</p><p>排查顺序建议固定成：<strong>请求发了吗 → 状态码是多少 → 请求体对吗 → 响应体是什么</strong>。四步走完，接口问题基本就定位了。</p><h2>常见报错对照表</h2><div class="table-wrap"><table><thead><tr><th>报错</th><th>通常原因</th><th>怎么查</th></tr></thead><tbody><tr><td><code>Cannot read properties of undefined (reading 'x')</code></td><td>数据还没到，或对象层级猜错</td><td>打印父对象，看接口返回结构；确认是 <code>user.profile.name</code> 还是 <code>user.name</code></td></tr><tr><td><code>Cannot read properties of null (reading 'x')</code></td><td><code>querySelector</code> 没选中，或显式赋了 null</td><td>检查选择器拼写、脚本执行时机；在读取前打印元素</td></tr><tr><td><code>x is not a function</code></td><td>方法名拼错，或值的类型不对</td><td><code>console.log(typeof x)</code>；确认数组方法没用在 NodeList 上</td></tr><tr><td><code>x is not defined</code></td><td>变量没声明、拼错、超出作用域</td><td>检查拼写和声明位置；模块里检查有没有 <code>import</code></td></tr><tr><td><code>Unexpected token '&lt;'</code></td><td>把 HTML 当 JS 或 JSON 解析</td><td>看 Network 的响应体；检查 script 路径、接口是否返回了错误页</td></tr><tr><td><code>Assignment to constant variable</code></td><td>给 <code>const</code> 重新赋值</td><td>找到那行赋值，改 <code>let</code>，或去掉不该有的赋值</td></tr><tr><td><code>Maximum call stack size exceeded</code></td><td>递归没有终止条件，或函数互相调用</td><td>看栈里重复出现的函数名，检查递归出口</td></tr><tr><td><code>Invalid or unexpected token</code></td><td>语法错误：缺括号、引号不配对、中文标点</td><td>看报错行和上一行；检查是否从文章复制了全角符号</td></tr><tr><td><code>Cannot access 'x' before initialization</code></td><td>在 <code>let</code> / <code>const</code> 声明前使用了变量</td><td>调整声明顺序；注意暂时性死区</td></tr><tr><td><code>Failed to fetch</code></td><td>断网、URL 错、CORS 被拦、<code>file://</code> 协议</td><td>Network 看请求是否发出；看控制台 CORS 提示；确认用本地服务器打开</td></tr><tr><td><code>Unexpected end of JSON input</code></td><td>响应体为空或 JSON 不完整</td><td>看 Response；检查是不是 204 或 500 空响应</td></tr><tr><td><code>body stream already read</code></td><td>响应体被读了两次</td><td>只解析一次；需要两次就先 <code>res.clone()</code></td></tr></tbody></table></div><h2>一套排查流程</h2><p>遇到 bug 时按这个顺序走，比随机改代码快得多：</p><ol><li><strong>复现</strong>：能不能稳定重现？点哪个按钮、填什么数据、什么顺序触发的？不能复现的问题，先想办法让它稳定出现。</li><li><strong>读报错</strong>：看类型、消息、栈的第一帧。没有报错但有异常表现，就在关键节点加日志或断点。</li><li><strong>缩小范围</strong>：是数据问题、逻辑问题，还是渲染问题？用二分法注释掉一半代码，或者在看不清的变量上打断点。</li><li><strong>验证假设</strong>：先说清「我认为原因是 X，如果改这里，表现应该从 A 变成 B」，再动手。改完对照预测，而不是「好像好了」。</li><li><strong>修复并回归</strong>：修完把相关流程再走一遍，确认没有引入新问题。顺手补一个校验或默认值，防止同类问题再来。</li></ol><p>「改一行试试」是最慢的方式。没有假设的修改，即使碰巧修好了，你也不知道为什么，下次换个地方还会犯。</p><h2>常见误区清单</h2><div class="table-wrap"><table><thead><tr><th>写法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td><code>try { ... } catch (e) {}</code></td><td>错误彻底消失，问题留到线上</td><td>空 catch 吞掉了所有信息，至少记录或兜底</td></tr><tr><td><code>catch</code> 里只 <code>console.log</code></td><td>用户界面停在原地</td><td>日志给开发者看，用户需要提示或状态恢复</td></tr><tr><td>用 <code>try/catch</code> 包住整个函数</td><td>错误位置模糊，bug 被掩盖</td><td>只包可能失败且能处理的那几行</td></tr><tr><td>调用 async 函数不加 <code>await</code></td><td>外层 <code>catch</code> 抓不到拒绝</td><td>错误在 Promise 里，必须 <code>await</code> 或 <code>.catch</code></td></tr><tr><td>以为 <code>fetch</code> 404 会进 <code>catch</code></td><td>不会，代码继续跑</td><td>4xx/5xx 不 reject，要查 <code>res.ok</code></td></tr><tr><td><code>throw '出错了'</code></td><td><code>catch</code> 拿到字符串，没有栈</td><td>抛 <code>Error</code> 对象才有 <code>message</code> 和 <code>stack</code></td></tr><tr><td><code>finally</code> 里写 <code>return</code></td><td>覆盖 <code>try</code> 的返回值</td><td><code>finally</code> 只做收尾，不决定结果</td></tr><tr><td>用 `</td><td></td><td>` 给数字兜底</td><td><code>0</code> 被替换成默认值</td><td><code>0</code> 是假值，用 <code>??</code></td></tr><tr><td>把 <code>?.</code> 当万能保护</td><td>必填数据缺失被推迟到更远处才炸</td><td>该报错的地方要报错，可选才用 <code>?.</code></td></tr><tr><td>提交前不删 <code>debugger</code></td><td>打开开发者工具的用户页面卡住</td><td><code>debugger</code> 只适合临时排查</td></tr><tr><td>只看控制台最后一行红字</td><td>错过真正的错误类型和位置</td><td>先看第一行的 <code>name</code>、<code>message</code> 和第一帧</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>下面这个函数调用后输出什么？</summary><div class="quiz-body"><p><code>function f() { try { return 'try'; } finally { console.log('finally'); } }</code>，然后 <code>console.log(f());</code></p></div></details><details class="quiz"><summary>下面这段代码，<code>catch</code> 会执行吗？</summary><div class="quiz-body"><p><code>async function load() { throw new Error('挂了'); }</code>，然后 <code>try { load(); } catch (e) { console.log('catch'); }</code></p></div></details><details class="quiz"><summary><code>0 ?? 10</code> 和 <code>0 || 10</code> 分别输出什么？</summary><div class="quiz-body"><p>分别输出 <code>0</code> 和 <code>10</code>。<code>??</code> 只在 <code>null</code> / <code>undefined</code> 时取右边，<code>||</code> 把 <code>0</code>、<code>''</code>、<code>false</code> 也当假值。</p></div></details><details class="quiz"><summary><code>console.log(notDeclared)</code> 报什么错？如果 <code>const a = 1</code> 之前就 <code>console.log(a)</code> 呢？</summary><div class="quiz-body"><p>第一句报 <code>ReferenceError: notDeclared is not defined</code>；第二句报 <code>ReferenceError: Cannot access 'a' before initialization</code>。前者是变量不存在，后者是暂时性死区。</p></div></details><details class="quiz"><summary><code>const user = {}; user.profile.name;</code> 报什么错？</summary><div class="quiz-body"><p>报 <code>TypeError: Cannot read properties of undefined (reading 'name')</code>。<code>user</code> 存在，但 <code>user.profile</code> 是 <code>undefined</code>，读它的 <code>name</code> 就炸了。改成 <code>user.profile?.name</code> 或先补默认值。</p></div></details><details class="quiz"><summary><code>throw '出错了'</code> 之后，<code>catch (err)</code> 里的 <code>err</code> 是什么？有什么问题？</summary><div class="quiz-body"><p><code>err</code> 就是字符串 <code>'出错了'</code>，不是 Error 对象。它没有 <code>stack</code>，你无法知道抛出位置，也不能用 <code>instanceof</code> 区分类型。应该 <code>throw new Error('出错了')</code>。</p></div></details><details class="quiz"><summary><code>fetch</code> 返回 500，<code>try/catch</code> 能抓到吗？</summary><div class="quiz-body"><p>不能。500 是正常完成的 HTTP 响应，Promise 会 resolve。要在 <code>try</code> 里判断 <code>if (!res.ok) throw new Error(...)</code>，才会进入 <code>catch</code>。</p></div></details><details class="quiz"><summary><code>const a = null; console.log(a?.b.c);</code> 会报错吗？</summary><div class="quiz-body"><p>不会，输出 <code>undefined</code>。可选链遇到 <code>null</code> 会短路整个链条，后面的 <code>.c</code> 不再求值。但 <code>a</code> 存在、<code>b</code> 不存在时，<code>a?.b.c</code> 仍然会报错，因为 <code>?.</code> 只保护了 <code>a</code> 这一层。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>在一个 HTML 文件里故意制造五种错误：读 undefined 的属性、调用不存在的方法、使用未声明变量、给 <code>const</code> 重新赋值、无限递归。每次只留一种，记录控制台的 <code>name</code>、<code>message</code> 和栈的第一帧，然后修掉。 验收：能不看答案说出五种错误的类型；能指出每种错误在栈里的第一帧；修复后页面不再报错。</li></ol><ol><li>写 <code>safeJsonParse(text, fallback)</code>：解析成功返回对象，失败返回 <code>fallback</code>，并 <code>console.warn</code> 记录原因。分别用合法 JSON、<code>'{bad'</code>、空字符串、<code>'null'</code> 测试。 验收：四种输入都不抛错；坏数据时返回默认值；警告里能看到原始错误信息。</li></ol><ol><li>写一个 <code>register(user)</code> 函数，校验 <code>name</code> 是非空字符串、<code>age</code> 是 0 到 120 的整数。校验失败抛自定义 <code>ValidationError</code>，带 <code>field</code> 字段。调用方根据 <code>field</code> 把错误显示到对应输入框。 验收：两种字段错误分别能触发；<code>err instanceof ValidationError</code> 为 <code>true</code>；错误提示落在正确的输入框下方。</li></ol><p><strong>进阶</strong></p><ol><li>做一组异步错误实验：让一个 async 函数直接 <code>throw</code>，分别用「不加 <code>await</code>」「加 <code>await</code>」「<code>.catch()</code>」三种方式调用，记录哪种能抓到。再加一个 <code>unhandledrejection</code> 监听，观察未处理拒绝何时触发。 验收：能解释三种方式的差异；控制台不再出现未处理的拒绝；监听器只作为兜底，不替代具体处理。</li></ol><ol><li>用断点排查一段求和代码：构造一个数组，其中一项的 <code>price</code> 是字符串 <code>'10'</code>，导致总和变成字符串拼接。在循环里设条件断点（如 <code>typeof items[i].price !== 'number'</code>），用 Watch 观察 <code>total</code> 的变化，再用 Step over / Step into 各走一遍。 验收：能定位到具体哪一项；能说出 <code>total</code> 在哪一步从数字变成字符串；修完后总和是数字，并给数据加了校验。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>这一章的工具不会只用在「修 bug」上。你读别人代码、接手项目、上线后看用户反馈，靠的都是同一套动作：读报错、缩小范围、验证假设。</p><p>到这里，语言、浏览器、存储、网络、调试五块能力都齐了。第 18 章会把它们合成一个完整的待办清单：DOM 渲染、事件委托、localStorage 持久化、空状态和错误提示，一个都不少。写项目时卡住，就回到这一章的排查流程，一步一步来。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="16.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="18.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"17","title":"错误处理与调试"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>变量与数据类型 · JS 通勤课</title>
+<meta name="description" content="从「给数据起名字」讲起，把 let/const、七种原始类型、null 与 undefined、typeof 的坑、类型转换和 0.1 + 0.2 一次讲透。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">变量与数据类型</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 02 章 · 约 40 分钟</div>
+    <h1>变量与数据类型</h1>
+    <p class="lede">从「给数据起名字」讲起，把 let/const、七种原始类型、null 与 undefined、typeof 的坑、类型转换和 0.1 + 0.2 一次讲透。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>上一章说了这条路怎么走，从这一章开始真正写代码。</p><p>变量是「给数据起名字」，类型决定了「这个数据能做什么」。你后面写的每一行 JS，都建立在这两件事上。这章学完，你应该能看懂一段普通代码里每个值是什么类型、为什么这里必须用 <code>const</code>、以及 <code>undefined</code> 和 <code>null</code> 到底该用哪个。</p></blockquote><h2>为什么需要它</h2><p>假设你要写一个记账小工具，需要记住三样东西：这笔钱是多少、花在什么上、什么时候花的。</p><p>最直接的想法是每次用到就重新写一遍：</p><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-n">35.5</span>);
+console.<span class="tok-f">log</span>(<span class="tok-s">'午饭'</span>);
+console.<span class="tok-f">log</span>(<span class="tok-s">'2026-10-27'</span>);</code></pre><p>问题很快出现：如果这笔钱算错了，你要把每一个 <code>35.5</code> 都改一遍；如果想让用户自己输入金额，你根本不知道该改哪里。</p><p>变量就是解决这个问题的：<strong>给一个值起个名字，之后都通过名字使用它</strong>。</p><pre><code class="lang-js"><span class="tok-k">const</span> amount = <span class="tok-n">35.5</span>;
+<span class="tok-k">const</span> category = <span class="tok-s">'午饭'</span>;
+<span class="tok-k">const</span> date = <span class="tok-s">'2026-10-27'</span>;
+
+console.<span class="tok-f">log</span>(amount);    <span class="tok-c">// 输出: 35.5</span>
+console.<span class="tok-f">log</span>(category);  <span class="tok-c">// 输出: 午饭</span></code></pre><p>现在金额要改，只改变量定义那一行就够了。这是一切编程的第一层抽象。</p><p>但「起名字」只是表面。真正关键的是第二件事：<strong>这个值是什么类型</strong>。因为类型决定了它能做什么操作：</p><pre><code class="lang-js"><span class="tok-k">const</span> a = <span class="tok-n">35.5</span>;
+<span class="tok-k">const</span> b = <span class="tok-s">'35.5'</span>;
+
+a + <span class="tok-n">1</span>;   <span class="tok-c">// 36.5，数字相加</span>
+b + <span class="tok-n">1</span>;   <span class="tok-c">// '35.51'，字符串拼接</span></code></pre><p>同样的 <code>+</code>，结果完全不同。不搞清楚类型，你会写出「明明是两个数，加起来却变成了字符串」这种 bug，而且很难查。</p><h2>声明变量：let、const 与 var</h2><p>JS 里声明变量有三种关键字。先看它们的行为差异：</p><pre><code class="lang-js"><span class="tok-k">let</span> count = <span class="tok-n">1</span>;        <span class="tok-c">// 可以重新赋值</span>
+count = <span class="tok-n">2</span>;            <span class="tok-c">// 合法</span>
+count = count + <span class="tok-n">1</span>;    <span class="tok-c">// 合法，现在是 3</span>
+
+<span class="tok-k">const</span> price = <span class="tok-n">9.9</span>;    <span class="tok-c">// 声明后不能重新赋值</span>
+<span class="tok-c">// price = 10;        // 报错: Assignment to constant variable.</span>
+
+<span class="tok-k">var</span> old = <span class="tok-s">'old'</span>;      <span class="tok-c">// 老写法，能跑，但不要用</span></code></pre><p><code>const</code> 报的错长这样，你在控制台会看到：</p><pre><code class="lang-text">Uncaught TypeError: Assignment to constant variable.</code></pre><p>意思是「试图给一个常量重新赋值」。注意它报的是 <code>TypeError</code>，不是语法错误——代码能跑，只是运行到这一行被拦住了。</p><h3>var 为什么被淘汰</h3><p><code>var</code> 是 2015 年之前唯一的写法，它有三个今天看来很危险的行为：</p><pre><code class="lang-js"><span class="tok-c">// 1. var 没有块级作用域，会&quot;泄漏&quot;到外面</span>
+<span class="tok-k">if</span> (<span class="tok-k">true</span>) {
+  <span class="tok-k">var</span> leaked = <span class="tok-s">'我出来了'</span>;
+}
+console.<span class="tok-f">log</span>(leaked);   <span class="tok-c">// 输出: 我出来了</span>
+
+<span class="tok-c">// 2. var 会变量提升，声明前使用不报错，但值是 undefined</span>
+console.<span class="tok-f">log</span>(hoisted);  <span class="tok-c">// 输出: undefined</span>
+<span class="tok-k">var</span> hoisted = <span class="tok-n">1</span>;
+
+<span class="tok-c">// 3. var 允许重复声明，悄悄覆盖掉前面的值</span>
+<span class="tok-k">var</span> x = <span class="tok-n">1</span>;
+<span class="tok-k">var</span> x = <span class="tok-n">2</span>;             <span class="tok-c">// 不报错，x 变成 2</span></code></pre><p>第 1 条最容易造成 bug：你在 <code>if</code> 或 <code>for</code> 里定义的变量，跑到外面还能用，名字还可能和别人撞车。<code>let</code> 和 <code>const</code> 都修掉了这个问题。</p><p>新代码里**不要用 <code>var</code>**。看到别人的老代码里有 <code>var</code>，知道它是什么就行，第 9 章会把这些行为讲透。</p><h3>怎么选：默认 const</h3><p>选择规则只有一句话：</p><ul><li>**默认用 <code>const</code>**</li><li>确实需要「换一个值」时才用 <code>let</code></li><li>永远不用 <code>var</code></li></ul><p>为什么默认 <code>const</code>？因为大部分变量声明后就不该再变。用 <code>const</code> 相当于给自己上了一道保险：以后某天你不小心写了 <code>price = 100</code>，程序立刻报错，而不是悄悄算出错误的结果。</p><p>一个真实场景：</p><pre><code class="lang-js"><span class="tok-k">const</span> taxRate = <span class="tok-n">0.06</span>;
+<span class="tok-c">// ... 一百行之后</span>
+<span class="tok-c">// taxRate = 0.13;   // 手滑了？const 会立刻拦住你</span></code></pre><p>如果是 <code>let</code>，这行会静默生效，你的所有金额都错了，而且不会报错。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p><code>const</code> 限制的是「不能让这个名字指向别的值」，不是「值本身不能改」。对象和数组的内容依然可以修改：</p><pre><code class="lang-js"><span class="tok-k">const</span> user = { name: <span class="tok-s">'小明'</span> };
+user.name = <span class="tok-s">'小红'</span>;     <span class="tok-c">// 合法，对象内容变了</span>
+console.<span class="tok-f">log</span>(user);      <span class="tok-c">// 输出: { name: '小红' }</span>
+
+<span class="tok-c">// user = {};           // 报错，不能整个换掉</span></code></pre><p>想真正冻结对象，用 <code>Object.freeze(user)</code>。这一点第 7 章会详细讲。</p></div><h3>一条语句一个声明</h3><p>别写这种「一行声明三个变量」的代码：</p><pre><code class="lang-js"><span class="tok-k">let</span> a = <span class="tok-n">1</span>, b = <span class="tok-n">2</span>, c = <span class="tok-n">3</span>;   <span class="tok-c">// 能跑，但难读</span></code></pre><p>更推荐：</p><pre><code class="lang-js"><span class="tok-k">let</span> a = <span class="tok-n">1</span>;
+<span class="tok-k">let</span> b = <span class="tok-n">2</span>;
+<span class="tok-k">let</span> c = <span class="tok-n">3</span>;</code></pre><p>理由很实际：以后要删掉 <code>b</code>，用 <code>let</code> 分开写不会牵连其他行；合并写时容易漏掉逗号或分号，报的错还很难看懂。</p><h2>变量命名：合法与好习惯</h2><p>命名有硬规则（不遵守直接报错）和软规则（不遵守能跑，但会被同事骂）。</p><h3>硬规则</h3><div class="table-wrap"><table><thead><tr><th>规则</th><th>合法</th><th>非法</th></tr></thead><tbody><tr><td>只能用字母、数字、<code>_</code>、<code>$</code></td><td><code>userName</code>、<code>_temp</code>、<code>$btn</code></td><td><code>user-name</code>（<code>-</code> 被当减号）</td></tr><tr><td>不能以数字开头</td><td><code>a1</code></td><td><code>1a</code></td></tr><tr><td>不能用保留字</td><td><code>value</code>、<code>data</code></td><td><code>const</code>、<code>let</code>、<code>class</code>、<code>return</code></td></tr><tr><td>区分大小写</td><td><code>name</code> 和 <code>Name</code> 是两个变量</td><td>—</td></tr></tbody></table></div><p>中文变量名其实合法（<code>const 价格 = 1</code>），但不要用：切换输入法麻烦，别人看不懂，搜索也不好搜。</p><h3>软规则（实际项目里的惯例）</h3><pre><code class="lang-js"><span class="tok-k">const</span> userName = <span class="tok-s">'小明'</span>;        <span class="tok-c">// 变量、函数：小驼峰 camelCase</span>
+<span class="tok-k">const</span> MAX_RETRY = <span class="tok-n">3</span>;            <span class="tok-c">// 真正的常量：全大写下划线</span>
+<span class="tok-k">const</span> isLoggedIn = <span class="tok-k">true</span>;        <span class="tok-c">// 布尔值：is / has / can 开头</span>
+<span class="tok-k">const</span> userList = [];            <span class="tok-c">// 数组：复数或 List 结尾</span>
+<span class="tok-k">const</span> getUserById = () =&gt; {};   <span class="tok-c">// 函数：动词开头，说清做什么</span></code></pre><p>两个最常见的坏名字：</p><pre><code class="lang-js"><span class="tok-k">const</span> data = [...];    <span class="tok-c">// 什么数据？看不出</span>
+<span class="tok-k">const</span> temp = <span class="tok-n">1</span>;        <span class="tok-c">// 临时什么？三天后你自己也不知道</span>
+
+<span class="tok-c">// 改好</span>
+<span class="tok-k">const</span> todoList = [...];
+<span class="tok-k">const</span> retryCount = <span class="tok-n">1</span>;</code></pre><p>命名的标准是：<strong>别人只看名字就知道里面装的是什么</strong>。这比省几个字符重要得多。</p><h2>数据类型总览：原始类型与对象</h2><p>JS 的值分成两大类：<strong>原始类型（primitive）</strong> 和 <strong>对象（object/reference）</strong>。</p><p>原始类型一共 7 种，它们的特点是「不可变、按值传递」：</p><pre><code class="lang-js"><span class="tok-s">'文本'</span>              <span class="tok-c">// string   字符串</span>
+<span class="tok-n">42</span>                  <span class="tok-c">// number   数字（整数和小数都是它）</span>
+<span class="tok-k">true</span>                <span class="tok-c">// boolean  布尔值</span>
+<span class="tok-k">undefined</span>           <span class="tok-c">// undefined 未定义</span>
+<span class="tok-k">null</span>                <span class="tok-c">// null     空值</span>
+123n                <span class="tok-c">// bigint   超大整数（日常很少用）</span>
+<span class="tok-f">Symbol</span>(<span class="tok-s">'id'</span>)        <span class="tok-c">// symbol   唯一标识符（日常很少用）</span></code></pre><p>除这 7 种以外的<strong>一切都是对象</strong>：数组、函数、日期、正则、<code>Map</code>、<code>Set</code>……包括 <code>document</code>、<code>window</code> 这些浏览器对象。</p><p>用一张表记住它们：</p><div class="table-wrap"><table><thead><tr><th>类型</th><th>典型值</th><th>什么时候用</th></tr></thead><tbody><tr><td>string</td><td><code>'hello'</code>、<code>''</code></td><td>文本、名称、输入框内容</td></tr><tr><td>number</td><td><code>0</code>、<code>3.14</code>、<code>-1</code></td><td>金额、数量、坐标、时间戳</td></tr><tr><td>boolean</td><td><code>true</code>、<code>false</code></td><td>开关、是否登录、是否完成</td></tr><tr><td>undefined</td><td><code>undefined</code></td><td>系统表示「还没有值」</td></tr><tr><td>null</td><td><code>null</code></td><td>你主动表示「这里就是空的」</td></tr><tr><td>bigint</td><td><code>9007199254740993n</code></td><td>超过安全整数范围（极少）</td></tr><tr><td>symbol</td><td><code>Symbol('id')</code></td><td>对象唯一键（极少，看源码才遇到）</td></tr><tr><td>object</td><td><code>{}</code>、<code>[]</code>、函数</td><td>装一组数据、一组元素、一段逻辑</td></tr></tbody></table></div><p>前 5 种占你日常代码的 99%。<code>bigint</code> 和 <code>symbol</code> 知道有这回事就行。</p><h2>数字：整数、小数与 0.1 + 0.2</h2><p>JS 只有一种数字类型 <code>number</code>，整数和小数不区分：</p><pre><code class="lang-js"><span class="tok-k">const</span> a = <span class="tok-n">42</span>;
+<span class="tok-k">const</span> b = <span class="tok-n">3.14</span>;
+<span class="tok-k">const</span> c = -<span class="tok-n">0.5</span>;
+<span class="tok-k">const</span> d = 1e6;      <span class="tok-c">// 科学计数法，等于 1000000</span>
+<span class="tok-k">const</span> e = 0x1f;     <span class="tok-c">// 十六进制，等于 31</span></code></pre><p>内部它们都是 64 位浮点数（IEEE 754 双精度）。这个设计带来一个必须知道的问题。</p><h3>0.1 + 0.2 为什么不等于 0.3</h3><pre><code class="lang-js"><span class="tok-n">0.1</span> + <span class="tok-n">0.2</span>;              <span class="tok-c">// 输出: 0.30000000000000004</span>
+<span class="tok-n">0.1</span> + <span class="tok-n">0.2</span> === <span class="tok-n">0.3</span>;      <span class="tok-c">// 输出: false</span></code></pre><p>原因不是 JS 算错了，而是<strong>二进制无法精确表示 0.1 和 0.2</strong>。就像十进制写不出 1/3 的精确值（0.3333…），二进制也写不出 0.1 的精确值，只能存一个非常接近的数。两个近似值相加，误差就露出来了。</p><p>这不是 JS 独有的问题，Python、Java 里同样存在，只是它们默认打印时会隐藏尾部误差。</p><p>实际影响最大的是<strong>金额计算</strong>：</p><pre><code class="lang-js"><span class="tok-c">// 错误做法：直接比较</span>
+<span class="tok-k">if</span> (<span class="tok-n">0.1</span> + <span class="tok-n">0.2</span> === <span class="tok-n">0.3</span>) { <span class="tok-c">/* 永远不会执行 */</span> }
+
+<span class="tok-c">// 做法一：转成整数「分」来算</span>
+<span class="tok-k">const</span> totalCents = <span class="tok-n">1999</span> + <span class="tok-n">2999</span>;      <span class="tok-c">// 4998 分</span>
+console.<span class="tok-f">log</span>((totalCents / <span class="tok-n">100</span>).<span class="tok-f">toFixed</span>(<span class="tok-n">2</span>));   <span class="tok-c">// 输出: '49.98'</span>
+
+<span class="tok-c">// 做法二：比较时允许极小误差</span>
+Math.<span class="tok-f">abs</span>(<span class="tok-n">0.1</span> + <span class="tok-n">0.2</span> - <span class="tok-n">0.3</span>) &lt; 1e-<span class="tok-n">10</span>;   <span class="tok-c">// 输出: true</span></code></pre><p><code>toFixed(2)</code> 返回的是<strong>字符串</strong>，因为它是用来展示的，不是用来继续计算的。想变回数字要 <code>Number((0.1 + 0.2).toFixed(2))</code>。</p><h3>NaN、Infinity 与 -0</h3><p>三个特殊的数字值：</p><pre><code class="lang-js"><span class="tok-f">Number</span>(<span class="tok-s">'abc'</span>);       <span class="tok-c">// 输出: NaN</span>
+<span class="tok-n">0</span> / <span class="tok-n">0</span>;               <span class="tok-c">// 输出: NaN</span>
+<span class="tok-n">1</span> / <span class="tok-n">0</span>;               <span class="tok-c">// 输出: Infinity</span>
+-<span class="tok-n">1</span> / <span class="tok-n">0</span>;              <span class="tok-c">// 输出: -Infinity</span></code></pre><p><code>NaN</code> 全称 Not a Number，但它自己的类型是 <code>number</code>：</p><pre><code class="lang-js"><span class="tok-k">typeof</span> NaN;          <span class="tok-c">// 输出: 'number'</span>
+NaN === NaN;         <span class="tok-c">// 输出: false  ← 它不等于自己</span></code></pre><p>因为 <code>NaN === NaN</code> 是 false，判断它必须用专门的函数：</p><pre><code class="lang-js">Number.<span class="tok-f">isNaN</span>(NaN);         <span class="tok-c">// 输出: true</span>
+Number.<span class="tok-f">isNaN</span>(<span class="tok-s">'abc'</span>);       <span class="tok-c">// 输出: false  ← 它只认真正的 NaN</span>
+
+<span class="tok-c">// 老写法 isNaN('abc') 会先转数字，返回 true，容易误判</span>
+<span class="tok-f">isNaN</span>(<span class="tok-s">'abc'</span>);              <span class="tok-c">// 输出: true</span></code></pre><h3>判断数字的几个实用函数</h3><pre><code class="lang-js">Number.<span class="tok-f">isInteger</span>(<span class="tok-n">42</span>);        <span class="tok-c">// 输出: true</span>
+Number.<span class="tok-f">isInteger</span>(<span class="tok-n">42.5</span>);      <span class="tok-c">// 输出: false</span>
+Number.<span class="tok-f">isFinite</span>(<span class="tok-n">42</span>);         <span class="tok-c">// 输出: true</span>
+Number.<span class="tok-f">isFinite</span>(Infinity);   <span class="tok-c">// 输出: false</span>
+Number.<span class="tok-f">isFinite</span>(NaN);        <span class="tok-c">// 输出: false</span>
+Number.MAX_SAFE_INTEGER;     <span class="tok-c">// 输出: 9007199254740991</span></code></pre><p>最后一行值得记一下：超过这个范围的整数，精度会丢失。</p><pre><code class="lang-js"><span class="tok-n">9007199254740991</span> + <span class="tok-n">1</span> === <span class="tok-n">9007199254740991</span>;   <span class="tok-c">// 输出: true，加 1 没变化</span></code></pre><p>日常业务基本碰不到，但如果处理订单号、雪花 ID 这类大整数，就会踩坑——这也是后面讲接口时常见 bug 的来源。</p><h2>字符串：不可变的值</h2><p>三种写法：</p><pre><code class="lang-js"><span class="tok-k">const</span> s1 = <span class="tok-s">'单引号'</span>;
+<span class="tok-k">const</span> s2 = <span class="tok-s">&quot;双引号&quot;</span>;
+<span class="tok-k">const</span> s3 = <span class="tok-s">`反引号，可以插值：${s1}`</span>;   <span class="tok-c">// 输出: 反引号，可以插值：单引号</span></code></pre><p>前两种几乎没有区别，团队里统一一种即可。第三种叫<strong>模板字符串（template literal）</strong>，第 12 章细讲，现在知道它能塞变量就行。</p><h3>字符串不可变</h3><p>这句话很重要，但初学者经常理解错。它不是说「字符串变量不能改」，而是<strong>字符串的方法永远返回新字符串，不会改动原来的值</strong>：</p><pre><code class="lang-js"><span class="tok-k">const</span> s = <span class="tok-s">'hello'</span>;
+
+s.<span class="tok-f">toUpperCase</span>();    <span class="tok-c">// 返回 'HELLO'</span>
+console.<span class="tok-f">log</span>(s);     <span class="tok-c">// 输出: hello，原值没变</span>
+
+s.<span class="tok-f">slice</span>(<span class="tok-n">0</span>, <span class="tok-n">2</span>);      <span class="tok-c">// 返回 'he'</span>
+console.<span class="tok-f">log</span>(s);     <span class="tok-c">// 输出: hello</span>
+
+<span class="tok-c">// 想保留结果必须接住</span>
+<span class="tok-k">const</span> upper = s.<span class="tok-f">toUpperCase</span>();</code></pre><p>对比数组：数组的 <code>push</code> 会改动原数组。字符串不会。所以写 <code>s.toUpperCase()</code> 而不赋值，等于什么也没做——这是初学者最常犯的错误之一。</p><pre><code class="lang-js"><span class="tok-c">// 错误：以为改掉了</span>
+<span class="tok-k">let</span> name = <span class="tok-s">' 小明 '</span>;
+name.<span class="tok-f">trim</span>();
+console.<span class="tok-f">log</span>(name);    <span class="tok-c">// 输出: ' 小明 '，空格还在</span>
+
+<span class="tok-c">// 正确</span>
+name = name.<span class="tok-f">trim</span>();
+console.<span class="tok-f">log</span>(name);    <span class="tok-c">// 输出: '小明'</span></code></pre><h3>常用属性</h3><pre><code class="lang-js"><span class="tok-k">const</span> str = <span class="tok-s">'JavaScript'</span>;
+str.length;          <span class="tok-c">// 输出: 10</span>
+str[<span class="tok-n">0</span>];              <span class="tok-c">// 输出: 'J'</span>
+str[str.length - <span class="tok-n">1</span>]; <span class="tok-c">// 输出: 't'</span>
+str.<span class="tok-f">at</span>(-<span class="tok-n">1</span>);          <span class="tok-c">// 输出: 't'，负数从末尾数</span></code></pre><p><code>length</code> 是属性，不加括号；方法是函数，要加括号。搞混了会报 <code>str.length is not a function</code>。</p><h2>null 与 undefined：一对容易混的双胞胎</h2><p>这两个值都表示「没有」，但语义完全不同：</p><div class="table-wrap"><table><thead><tr><th>值</th><th>谁给的</th><th>含义</th><th>典型场景</th></tr></thead><tbody><tr><td><code>undefined</code></td><td>系统</td><td>还没有值</td><td>声明未赋值、函数无返回、属性不存在</td></tr><tr><td><code>null</code></td><td>你</td><td>故意设成空</td><td>清空选择、接口返回空、主动重置</td></tr></tbody></table></div><pre><code class="lang-js"><span class="tok-k">let</span> a;                  <span class="tok-c">// undefined，系统自动给的</span>
+console.<span class="tok-f">log</span>(a);         <span class="tok-c">// 输出: undefined</span>
+
+<span class="tok-k">function</span> <span class="tok-f">noReturn</span>() {}
+console.<span class="tok-f">log</span>(<span class="tok-f">noReturn</span>()); <span class="tok-c">// 输出: undefined</span>
+
+<span class="tok-k">const</span> user = { name: <span class="tok-s">'小明'</span> };
+console.<span class="tok-f">log</span>(user.age);   <span class="tok-c">// 输出: undefined，属性不存在</span></code></pre><p>而 <code>null</code> 是你主动写的：</p><pre><code class="lang-js"><span class="tok-k">let</span> selectedId = <span class="tok-k">null</span>;   <span class="tok-c">// 表示&quot;当前没有选中任何一项&quot;</span>
+<span class="tok-k">let</span> currentUser = <span class="tok-k">null</span>;  <span class="tok-c">// 表示&quot;还没登录&quot;</span>
+
+<span class="tok-c">// 用户取消选择后</span>
+selectedId = <span class="tok-k">null</span>;</code></pre><h3>该用哪个</h3><p>一条实用规则：**不要主动写 <code>undefined</code>，需要表示空就用 <code>null</code>**。</p><pre><code class="lang-js"><span class="tok-c">// 不推荐</span>
+<span class="tok-k">let</span> result = <span class="tok-k">undefined</span>;
+
+<span class="tok-c">// 推荐</span>
+<span class="tok-k">let</span> result = <span class="tok-k">null</span>;</code></pre><p>因为 <code>undefined</code> 还承担着「系统层面的缺失」含义，混着用会让代码难以判断「是没赋值，还是故意清空」。</p><h3>判断时要小心</h3><pre><code class="lang-js"><span class="tok-k">const</span> v = <span class="tok-k">null</span>;
+
+v === <span class="tok-k">null</span>;          <span class="tok-c">// 输出: true</span>
+v === <span class="tok-k">undefined</span>;     <span class="tok-c">// 输出: false</span>
+v == <span class="tok-k">null</span>;           <span class="tok-c">// 输出: true  ← 同时匹配 null 和 undefined</span>
+v == <span class="tok-k">undefined</span>;      <span class="tok-c">// 输出: true</span></code></pre><p><code>== null</code> 是 <code>==</code> 唯一推荐使用的场景：一行同时判断「是 null 或者 undefined」。</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">greet</span>(name) {
+  <span class="tok-k">if</span> (name == <span class="tok-k">null</span>) {          <span class="tok-c">// null 和 undefined 都会被拦住</span>
+    <span class="tok-k">return</span> <span class="tok-s">'你好，陌生人'</span>;
+  }
+  <span class="tok-k">return</span> <span class="tok-s">'你好，'</span> + name;
+}
+
+<span class="tok-f">greet</span>();            <span class="tok-c">// 输出: 你好，陌生人</span>
+<span class="tok-f">greet</span>(<span class="tok-k">null</span>);        <span class="tok-c">// 输出: 你好，陌生人</span>
+<span class="tok-f">greet</span>(<span class="tok-s">'小明'</span>);      <span class="tok-c">// 输出: 你好，小明</span></code></pre><h2>布尔值与「真假值」</h2><p><code>boolean</code> 只有两个值：<code>true</code> 和 <code>false</code>。但 JS 里<strong>任何值都能当条件用</strong>，这时会发生隐式转换。</p><p>被判定为 <code>false</code> 的只有 8 个值，背下来：</p><pre><code class="lang-js"><span class="tok-k">false</span>
+<span class="tok-n">0</span>
+-<span class="tok-n">0</span>
+0n              <span class="tok-c">// 0n 是 bigint 的 0</span>
+<span class="tok-s">''</span>              <span class="tok-c">// 空字符串</span>
+<span class="tok-k">null</span>
+<span class="tok-k">undefined</span>
+NaN</code></pre><p>**除此之外全部是 <code>true</code>**，包括这些反直觉的：</p><pre><code class="lang-js"><span class="tok-f">Boolean</span>(<span class="tok-s">'0'</span>);     <span class="tok-c">// 输出: true  非空字符串</span>
+<span class="tok-f">Boolean</span>(<span class="tok-s">' '</span>);     <span class="tok-c">// 输出: true  一个空格也算非空</span>
+<span class="tok-f">Boolean</span>([]);      <span class="tok-c">// 输出: true  空数组也是对象</span>
+<span class="tok-f">Boolean</span>({});      <span class="tok-c">// 输出: true  空对象也是对象</span>
+<span class="tok-f">Boolean</span>(-<span class="tok-n">1</span>);      <span class="tok-c">// 输出: true  负数也是真</span></code></pre><p>这是真实 bug 的高发区：</p><pre><code class="lang-js"><span class="tok-k">const</span> input = <span class="tok-s">'0'</span>;       <span class="tok-c">// 用户输入了数字 0</span>
+
+<span class="tok-k">if</span> (input) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'有输入'</span>);  <span class="tok-c">// 会执行，因为 '0' 是真值</span>
+}
+
+<span class="tok-c">// 想判断&quot;有没有填写&quot;，应该先转数字再判断</span>
+<span class="tok-k">const</span> num = <span class="tok-f">Number</span>(input);
+<span class="tok-k">if</span> (num) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'是有效数字'</span>);
+}</code></pre><div class="callout callout-warn"><span class="callout-label">注意</span><p>不要用「真假值」判断数组或对象是否为空。<code>[]</code> 和 <code>{}</code> 都是 <code>true</code>。</p><p>判断空数组用 <code>arr.length === 0</code>，判断空对象用 <code>Object.keys(obj).length === 0</code>。</p></div><h2>typeof：能做什么，不能做什么</h2><p><code>typeof</code> 返回一个字符串，表示值的类型：</p><pre><code class="lang-js"><span class="tok-k">typeof</span> <span class="tok-s">'abc'</span>;         <span class="tok-c">// 输出: 'string'</span>
+<span class="tok-k">typeof</span> <span class="tok-n">42</span>;            <span class="tok-c">// 输出: 'number'</span>
+<span class="tok-k">typeof</span> <span class="tok-k">true</span>;          <span class="tok-c">// 输出: 'boolean'</span>
+<span class="tok-k">typeof</span> <span class="tok-k">undefined</span>;     <span class="tok-c">// 输出: 'undefined'</span>
+<span class="tok-k">typeof</span> 123n;          <span class="tok-c">// 输出: 'bigint'</span>
+<span class="tok-k">typeof</span> <span class="tok-f">Symbol</span>();      <span class="tok-c">// 输出: 'symbol'</span>
+<span class="tok-k">typeof</span> {};            <span class="tok-c">// 输出: 'object'</span>
+<span class="tok-k">typeof</span> <span class="tok-k">function</span> () {};<span class="tok-c">// 输出: 'function'</span></code></pre><p>它有两个必须记住的坑：</p><pre><code class="lang-js"><span class="tok-k">typeof</span> <span class="tok-k">null</span>;          <span class="tok-c">// 输出: 'object'   ← 坑 1</span>
+<span class="tok-k">typeof</span> [];            <span class="tok-c">// 输出: 'object'   ← 坑 2</span></code></pre><p>第一个是 JS 诞生时的历史 bug（早期用低位标记类型，<code>null</code> 的标记和对象撞了），因为太多老代码依赖这个行为，永远改不了。</p><p>第二个是因为数组本质上就是对象，<code>typeof</code> 分不出来。</p><h3>正确的类型判断方式</h3><div class="table-wrap"><table><thead><tr><th>想判断</th><th>正确写法</th><th>错误写法</th></tr></thead><tbody><tr><td>是不是 null</td><td><code>value === null</code></td><td><code>typeof value === 'null'</code></td></tr><tr><td>是不是数组</td><td><code>Array.isArray(value)</code></td><td><code>typeof value === 'array'</code></td></tr><tr><td>是不是 NaN</td><td><code>Number.isNaN(value)</code></td><td><code>value === NaN</code></td></tr><tr><td>是不是普通对象</td><td><code>typeof v === 'object' &amp;&amp; v !== null &amp;&amp; !Array.isArray(v)</code></td><td><code>typeof v === 'object'</code></td></tr><tr><td>是不是函数</td><td><code>typeof fn === 'function'</code></td><td>—</td></tr><tr><td>是不是数字</td><td><code>typeof v === 'number' &amp;&amp; !Number.isNaN(v)</code></td><td><code>typeof v === 'number'</code></td></tr></tbody></table></div><p><code>typeof</code> 还有一个特殊行为：对一个<strong>没有声明过</strong>的变量使用它不会报错：</p><pre><code class="lang-js"><span class="tok-k">typeof</span> notDefined;    <span class="tok-c">// 输出: 'undefined'，不报错</span>
+
+<span class="tok-c">// 但直接使用会报错</span>
+console.<span class="tok-f">log</span>(notDefined);   <span class="tok-c">// ReferenceError: notDefined is not defined</span></code></pre><p>所以它常被用来做「这个变量存在吗」的安全检测。</p><h2>类型转换</h2><p>类型转换分两种：<strong>显式</strong>（你自己写的）和<strong>隐式</strong>（JS 自动做的）。原则是：<strong>多用显式，少依赖隐式</strong>。</p><h3>显式转换</h3><pre><code class="lang-js"><span class="tok-f">Number</span>(<span class="tok-s">'42'</span>);        <span class="tok-c">// 输出: 42</span>
+<span class="tok-f">Number</span>(<span class="tok-s">''</span>);          <span class="tok-c">// 输出: 0      ← 空字符串是 0，注意</span>
+<span class="tok-f">Number</span>(<span class="tok-s">'  42  '</span>);    <span class="tok-c">// 输出: 42     前后空格会被忽略</span>
+<span class="tok-f">Number</span>(<span class="tok-s">'42px'</span>);      <span class="tok-c">// 输出: NaN   整个字符串必须都能转</span>
+<span class="tok-f">Number</span>(<span class="tok-k">true</span>);        <span class="tok-c">// 输出: 1</span>
+<span class="tok-f">Number</span>(<span class="tok-k">false</span>);       <span class="tok-c">// 输出: 0</span>
+<span class="tok-f">Number</span>(<span class="tok-k">null</span>);        <span class="tok-c">// 输出: 0</span>
+<span class="tok-f">Number</span>(<span class="tok-k">undefined</span>);   <span class="tok-c">// 输出: NaN</span></code></pre><p><code>Number()</code> 要求「整个字符串都是合法数字」，所以带单位的字符串会失败。这时用 <code>parseInt</code> / <code>parseFloat</code>：</p><pre><code class="lang-js"><span class="tok-f">parseInt</span>(<span class="tok-s">'42px'</span>);          <span class="tok-c">// 输出: 42     从左往右解析，遇到非数字就停</span>
+<span class="tok-f">parseInt</span>(<span class="tok-s">'3.9'</span>);           <span class="tok-c">// 输出: 3      只取整数部分，不四舍五入</span>
+<span class="tok-f">parseFloat</span>(<span class="tok-s">'3.14元'</span>);      <span class="tok-c">// 输出: 3.14</span>
+<span class="tok-f">parseInt</span>(<span class="tok-s">'abc'</span>);           <span class="tok-c">// 输出: NaN    第一个字符就不合法</span>
+
+<span class="tok-c">// 第二个参数是进制，处理其他进制时要写</span>
+<span class="tok-f">parseInt</span>(<span class="tok-s">'ff'</span>, <span class="tok-n">16</span>);        <span class="tok-c">// 输出: 255</span></code></pre><p>字符串和布尔同理：</p><pre><code class="lang-js"><span class="tok-f">String</span>(<span class="tok-n">42</span>);           <span class="tok-c">// 输出: '42'</span>
+<span class="tok-f">String</span>(<span class="tok-k">null</span>);         <span class="tok-c">// 输出: 'null'</span>
+<span class="tok-f">String</span>(<span class="tok-k">undefined</span>);    <span class="tok-c">// 输出: 'undefined'</span>
+(<span class="tok-n">42</span>).<span class="tok-f">toString</span>();      <span class="tok-c">// 输出: '42'</span>
+
+<span class="tok-f">Boolean</span>(<span class="tok-n">0</span>);           <span class="tok-c">// 输出: false</span>
+<span class="tok-f">Boolean</span>(<span class="tok-s">'0'</span>);         <span class="tok-c">// 输出: true</span></code></pre><h3>隐式转换：<code>+</code> 是唯一的例外</h3><p>所有算术运算符（<code>-</code> <code>*</code> <code>/</code> <code>%</code>）都会把两边转成数字，只有 <code>+</code> 特殊——<strong>只要有一边是字符串，就变成拼接</strong>：</p><pre><code class="lang-js"><span class="tok-s">'2'</span> + <span class="tok-n">1</span>;          <span class="tok-c">// 输出: '21'</span>
+<span class="tok-n">1</span> + <span class="tok-s">'2'</span>;          <span class="tok-c">// 输出: '12'</span>
+<span class="tok-s">'2'</span> - <span class="tok-n">1</span>;          <span class="tok-c">// 输出: 1</span>
+<span class="tok-s">'2'</span> * <span class="tok-s">'3'</span>;        <span class="tok-c">// 输出: 6</span>
+<span class="tok-s">'6'</span> / <span class="tok-s">'2'</span>;        <span class="tok-c">// 输出: 3</span>
+<span class="tok-n">1</span> + <span class="tok-k">true</span>;         <span class="tok-c">// 输出: 2       true → 1</span>
+<span class="tok-n">1</span> + <span class="tok-k">null</span>;         <span class="tok-c">// 输出: 1       null → 0</span>
+<span class="tok-n">1</span> + <span class="tok-k">undefined</span>;    <span class="tok-c">// 输出: NaN     undefined → NaN</span></code></pre><p>这就是为什么表单取到的值必须先转数字：</p><pre><code class="lang-js"><span class="tok-c">// 用户在输入框里输入 10 和 20</span>
+<span class="tok-k">const</span> a = <span class="tok-s">'10'</span>;
+<span class="tok-k">const</span> b = <span class="tok-s">'20'</span>;
+
+console.<span class="tok-f">log</span>(a + b);        <span class="tok-c">// 输出: '1020'   ← 拼起来了</span>
+console.<span class="tok-f">log</span>(<span class="tok-f">Number</span>(a) + <span class="tok-f">Number</span>(b));   <span class="tok-c">// 输出: 30</span></code></pre><h3><code>==</code> 与 <code>===</code></h3><pre><code class="lang-js"><span class="tok-n">1</span> == <span class="tok-s">'1'</span>;            <span class="tok-c">// 输出: true    宽松相等，先转类型再比</span>
+<span class="tok-n">1</span> === <span class="tok-s">'1'</span>;           <span class="tok-c">// 输出: false   严格相等，类型不同直接 false</span>
+
+<span class="tok-n">0</span> == <span class="tok-k">false</span>;          <span class="tok-c">// 输出: true</span>
+<span class="tok-n">0</span> === <span class="tok-k">false</span>;         <span class="tok-c">// 输出: false</span>
+
+<span class="tok-k">null</span> == <span class="tok-k">undefined</span>;   <span class="tok-c">// 输出: true</span>
+<span class="tok-k">null</span> === <span class="tok-k">undefined</span>;  <span class="tok-c">// 输出: false</span>
+
+NaN === NaN;         <span class="tok-c">// 输出: false</span></code></pre><p><code>==</code> 的规则复杂到反直觉：</p><pre><code class="lang-js">[] == <span class="tok-k">false</span>;        <span class="tok-c">// 输出: true</span>
+<span class="tok-s">''</span> == <span class="tok-n">0</span>;            <span class="tok-c">// 输出: true</span>
+<span class="tok-s">'0'</span> == <span class="tok-k">false</span>;       <span class="tok-c">// 输出: true</span></code></pre><p>所以规则很明确：**一律用 <code>===</code>**，唯一例外是 <code>value == null</code>（同时判断 null 和 undefined）。</p><div class="callout callout-tip"><span class="callout-label">提示</span><p><code>===</code> 不比较对象内容。两个内容相同的对象用 <code>===</code> 比较永远是 <code>false</code>，因为它们不是同一块内存。对象比较留到第 7 章讲。</p></div><h2>值传递与引用传递</h2><p>这是理解 JS 后面所有「诡异现象」的关键，值得慢一点看。</p><p>赋值时，原始类型复制的是<strong>值本身</strong>，对象复制的是<strong>地址</strong>。</p><pre><code class="lang-js"><span class="tok-k">let</span> a = <span class="tok-n">10</span>;
+<span class="tok-k">let</span> b = a;      <span class="tok-c">// 把 10 这个值复制一份给 b</span>
+b = <span class="tok-n">20</span>;
+console.<span class="tok-f">log</span>(a); <span class="tok-c">// 输出: 10，a 不受影响</span></code></pre><pre><code class="lang-js"><span class="tok-k">const</span> obj1 = { count: <span class="tok-n">1</span> };
+<span class="tok-k">const</span> obj2 = obj1;        <span class="tok-c">// 把&quot;地址&quot;复制给 obj2，两个名字指向同一个对象</span>
+
+obj2.count = <span class="tok-n">99</span>;
+console.<span class="tok-f">log</span>(obj1.count);  <span class="tok-c">// 输出: 99，因为根本就是同一个对象</span></code></pre><p>可以把它想成两个钥匙牌写着同一个房间号：你在房间里搬走一把椅子，用另一把钥匙开门看到的也是空的。</p><p>函数传参同理：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">change</span>(num) {
+  num = <span class="tok-n">100</span>;
+}
+<span class="tok-k">let</span> x = <span class="tok-n">1</span>;
+<span class="tok-f">change</span>(x);
+console.<span class="tok-f">log</span>(x);      <span class="tok-c">// 输出: 1，原始类型不受影响</span>
+
+<span class="tok-k">function</span> <span class="tok-f">changeObj</span>(o) {
+  o.count = <span class="tok-n">100</span>;
+}
+<span class="tok-k">const</span> y = { count: <span class="tok-n">1</span> };
+<span class="tok-f">changeObj</span>(y);
+console.<span class="tok-f">log</span>(y.count); <span class="tok-c">// 输出: 100，对象被改了</span></code></pre><p>但重新赋值参数不会影响外面：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">replace</span>(o) {
+  o = { count: <span class="tok-n">999</span> };   <span class="tok-c">// 换了一个新对象，原来的没变</span>
+}
+<span class="tok-k">const</span> z = { count: <span class="tok-n">1</span> };
+<span class="tok-f">replace</span>(z);
+console.<span class="tok-f">log</span>(z.count);   <span class="tok-c">// 输出: 1</span></code></pre><p>想真正复制一份对象：</p><pre><code class="lang-js"><span class="tok-k">const</span> original = { name: <span class="tok-s">'小明'</span>, tags: [<span class="tok-s">'a'</span>] };
+
+<span class="tok-k">const</span> shallow = { ...original };              <span class="tok-c">// 浅拷贝：第一层独立，嵌套的还是共享</span>
+<span class="tok-k">const</span> deep = <span class="tok-f">structuredClone</span>(original);       <span class="tok-c">// 深拷贝：完全独立</span>
+
+shallow.tags.<span class="tok-f">push</span>(<span class="tok-s">'b'</span>);
+console.<span class="tok-f">log</span>(original.tags);   <span class="tok-c">// 输出: ['a', 'b']  ← 浅拷贝没保护嵌套</span>
+
+deep.tags.<span class="tok-f">push</span>(<span class="tok-s">'c'</span>);
+console.<span class="tok-f">log</span>(original.tags);   <span class="tok-c">// 输出: ['a', 'b']  ← 深拷贝真正独立</span></code></pre><p><code>structuredClone</code> 是现代浏览器和 Node 17+ 自带的，不用装库。第 7 章会展开。</p><h2>常见误区清单</h2><div class="table-wrap"><table><thead><tr><th>写法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td><code>typeof null</code></td><td><code>'object'</code></td><td>历史 bug，判断 null 用 <code>=== null</code></td></tr><tr><td><code>typeof []</code></td><td><code>'object'</code></td><td>数组是对象，判断用 <code>Array.isArray</code></td></tr><tr><td><code>const arr = [1]; arr.push(2)</code></td><td>合法</td><td><code>const</code> 只禁止重新赋值，不禁止改内容</td></tr><tr><td><code>NaN === NaN</code></td><td><code>false</code></td><td>NaN 不等于自身，用 <code>Number.isNaN</code></td></tr><tr><td><code>0.1 + 0.2 === 0.3</code></td><td><code>false</code></td><td>二进制精度误差，金额用整数分计算</td></tr><tr><td><code>'5' + 2</code></td><td><code>'52'</code></td><td><code>+</code> 遇字符串就拼接</td></tr><tr><td><code>Boolean('0')</code></td><td><code>true</code></td><td>非空字符串都是真值</td></tr><tr><td><code>if ([])</code></td><td>执行</td><td>空数组也是真值，用 <code>length === 0</code> 判断</td></tr><tr><td><code>Number('')</code></td><td><code>0</code></td><td>空字符串转数字是 0，不是 NaN</td></tr><tr><td><code>let a = {}; let b = a; b.x = 1</code></td><td><code>a.x === 1</code></td><td>两个变量指向同一对象</td></tr><tr><td><code>const s = 'a'; s.toUpperCase()</code></td><td><code>s</code> 仍是 <code>'a'</code></td><td>字符串方法返回新值，不会修改原值</td></tr><tr><td>声明后不赋值就 <code>console.log</code></td><td><code>undefined</code></td><td>系统给的默认值</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>下面这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> a = <span class="tok-s">'3'</span>;
+<span class="tok-k">const</span> b = <span class="tok-n">2</span>;
+console.<span class="tok-f">log</span>(a + b);
+console.<span class="tok-f">log</span>(a - b);</code></pre><p>第一条输出 <code>'32'</code>（字符串拼接），第二条输出 <code>1</code>（减法强制转数字）。同一个变量，运算符不同，结果类型完全不同。</p></div></details><details class="quiz"><summary><code>typeof null</code> 和 <code>typeof undefined</code> 分别是什么？</summary><div class="quiz-body"><p>分别返回 <code>'object'</code> 和 <code>'undefined'</code>。前者是历史 bug；判断 null 要用 <code>value === null</code>，不能靠 typeof。</p></div></details><details class="quiz"><summary><code>const list = [1, 2]; list.push(3);</code> 会报错吗？如果会，为什么？如果不会，什么情况下才报错？</summary><div class="quiz-body"><p>不会报错。<code>const</code> 限制的是「不能重新赋值」，即 <code>list = []</code> 才会报 <code>TypeError</code>。修改数组内容（<code>push</code>、<code>splice</code>、改下标）都是允许的。</p></div></details><details class="quiz"><summary>这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">let</span> x = { n: <span class="tok-n">1</span> };
+<span class="tok-k">let</span> y = x;
+y.n = <span class="tok-n">2</span>;
+console.<span class="tok-f">log</span>(x.n);</code></pre><p>输出 <code>2</code>。<code>y = x</code> 复制的是地址，两个变量指向同一个对象，改 <code>y</code> 就是改 <code>x</code>。</p></div></details><details class="quiz"><summary>为什么表单里 <code>'10' + '20'</code> 得到 <code>'1020'</code> 而不是 <code>30</code>？怎么改？</summary><div class="quiz-body"><p>因为 <code>+</code> 遇到字符串会拼接。改法是先转数字：<code>Number(a) + Number(b)</code>，或 <code>parseFloat(a) + parseFloat(b)</code>。</p></div></details><details class="quiz"><summary>下面哪些值是 falsy？</summary><div class="quiz-body"><p><code>0</code>、<code>'0'</code>、<code>''</code>、<code>[]</code>、<code>null</code>、<code>undefined</code>、<code>NaN</code>、<code>{}</code> </p></div></details><details class="quiz"><summary><code>0.1 + 0.2 === 0.3</code> 为什么是 false？金额计算该怎么写？</summary><div class="quiz-body"><p>浮点数在二进制中无法精确表示 0.1 和 0.2，相加后有微小误差。金额建议以「分」为单位用整数运算，展示时再除以 100 并 <code>toFixed(2)</code>。</p></div></details><details class="quiz"><summary>下面这段代码，<code>user.name</code> 会变成什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">reset</span>(u) {
+  u = { name: <span class="tok-s">'新用户'</span> };
+}
+<span class="tok-k">const</span> user = { name: <span class="tok-s">'小明'</span> };
+<span class="tok-f">reset</span>(user);
+console.<span class="tok-f">log</span>(user.name);</code></pre><p>仍然是 <code>'小明'</code>。函数内部把参数 <code>u</code> 指向了一个新对象，并没有修改原来那个对象。这与 <code>u.name = '新用户'</code> 是两回事。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>在浏览器控制台依次执行，把结果和你的预测对比：<code>typeof null</code>、<code>typeof []</code>、<code>typeof NaN</code>、<code>Number('42px')</code>、<code>parseInt('42px')</code>、<code>Number('')</code>。 验收：能说出每一个结果的原因，特别是 <code>Number('')</code> 为什么是 <code>0</code>。</li></ol><ol><li>写一个 <code>describe(value)</code> 函数，接收任意值，返回字符串说明它是 null、数组、普通对象、数字还是其他类型。要求 <code>describe(null)</code> 返回 <code>'null'</code>，<code>describe([])</code> 返回 <code>'array'</code>。 验收：六个测试值（<code>null</code>、<code>[]</code>、<code>{}</code>、<code>1</code>、<code>'a'</code>、<code>undefined</code>）全部判断正确。</li></ol><ol><li>模拟一个购物车金额计算：三件商品价格分别是 <code>19.9</code>、<code>29.9</code>、<code>0.1</code>，用「分」为单位求总和，再格式化输出 <code>¥79.90</code>。 验收：输出精确等于 <code>¥79.90</code>，不出现 <code>79.90000000000001</code> 这类结果。</li></ol><p><strong>进阶</strong></p><ol><li>写 <code>safeAdd(a, b)</code>：只要有一个参数不是有效数字（含 <code>'abc'</code>、<code>NaN</code>、<code>undefined</code>），就返回 <code>null</code>，否则返回两数之和。 验收：<code>safeAdd('1', 2)</code> 返回 <code>3</code>；<code>safeAdd('abc', 1)</code> 返回 <code>null</code>；<code>safeAdd(undefined, 1)</code> 返回 <code>null</code>。</li></ol><ol><li>用代码证明「浅拷贝不保护嵌套对象」：建一个带数组属性的对象，浅拷贝后修改数组，打印原对象，再用 <code>structuredClone</code> 做一次对比。 验收：能解释两次输出为什么不同，并在注释里写清原因。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>这一章的每个坑，后面都会以新的形式再出现：<code>typeof</code> 的坑会在第 7 章判断对象时复现，引用传递会在第 6 章数组方法、第 15 章 DOM 操作里反复出现，「字符串方法不改原值」则是第 8 章的核心。</p><p>如果现在觉得 <code>null</code>、<code>undefined</code>、<code>NaN</code> 有点乱，不用硬背。先把「默认 <code>const</code>」「一律 <code>===</code>」「字符串方法要接住返回值」这三条变成肌肉记忆，其余的在后续章节里自然会熟悉。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="01.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="03.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"02","title":"变量与数据类型"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

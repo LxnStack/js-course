@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>流程控制：条件与循环 · JS 通勤课</title>
+<meta name="description" content="if 与 switch 怎么选、for 的三段式怎么执行、break 与 continue 的边界，以及死循环是怎么来的。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">流程控制：条件与循环</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 04 章 · 约 38 分钟</div>
+    <h1>流程控制：条件与循环</h1>
+    <p class="lede">if 与 switch 怎么选、for 的三段式怎么执行、break 与 continue 的边界，以及死循环是怎么来的。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>第 3 章解决的是「一个值怎么算」，但真实程序面对的是「很多种情况、很多条数据」。</p><p>这一章讲两件事：什么时候执行哪一段（分支），以及把同一段执行很多遍（循环）。<code>if</code> 和 <code>for</code> 加起来，能覆盖你写业务代码时八成以上的控制逻辑。</p><p>学完你应该能：把一坨嵌套 <code>if</code> 改成提前 <code>return</code>、在 <code>switch</code> 里正确使用 <code>break</code>、用 <code>for...of</code> 安全遍历数组，并且在死循环把浏览器卡死之前知道怎么退出来。</p></blockquote><h2>为什么需要它</h2><p>假设你要把三条待办渲染成列表。最直接的做法是复制三遍：</p><pre><code class="lang-js"><span class="tok-k">const</span> todos = [<span class="tok-s">'买菜'</span>, <span class="tok-s">'写作业'</span>, <span class="tok-s">'跑步'</span>];
+
+console.<span class="tok-f">log</span>(<span class="tok-s">'&lt;li&gt;'</span> + todos[<span class="tok-n">0</span>] + <span class="tok-s">'&lt;/li&gt;'</span>);
+console.<span class="tok-f">log</span>(<span class="tok-s">'&lt;li&gt;'</span> + todos[<span class="tok-n">1</span>] + <span class="tok-s">'&lt;/li&gt;'</span>);
+console.<span class="tok-f">log</span>(<span class="tok-s">'&lt;li&gt;'</span> + todos[<span class="tok-n">2</span>] + <span class="tok-s">'&lt;/li&gt;'</span>);
+
+<span class="tok-c">// 每条待办还有完成状态，完成的要加一个 class</span>
+<span class="tok-k">const</span> done = <span class="tok-k">true</span>;
+<span class="tok-k">if</span> (done) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'&lt;li class=&quot;done&quot;&gt;买菜&lt;/li&gt;'</span>);
+} <span class="tok-k">else</span> {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'&lt;li&gt;买菜&lt;/li&gt;'</span>);
+}</code></pre><p>三条还能忍，三十条就要复制三十行，而且用户新增一条，你的代码不会跟着变。循环解决的正是这个问题：</p><pre><code class="lang-js"><span class="tok-k">for</span> (<span class="tok-k">const</span> todo <span class="tok-k">of</span> todos) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'&lt;li&gt;'</span> + todo + <span class="tok-s">'&lt;/li&gt;'</span>);
+}
+<span class="tok-c">// 输出: &lt;li&gt;买菜&lt;/li&gt;</span>
+<span class="tok-c">// 输出: &lt;li&gt;写作业&lt;/li&gt;</span>
+<span class="tok-c">// 输出: &lt;li&gt;跑步&lt;/li&gt;</span></code></pre><p>而 <code>if</code> 决定「同一条数据在不同状态下长什么样」。分支和循环组合起来，就是「一屏内容」的生成方式。第 15 章操作 DOM 时，你会用同样的结构把数据变成页面。</p><p>任何程序的执行都只有三种结构：顺序、分支、重复。你写的代码默认就是顺序——上一行执行完再执行下一行；<code>if</code> 让某几行「可能不执行」；循环让某几行「执行很多遍」。把这三件事分清楚，读代码时就能先看主干，再钻细节，而不至于陷在缩进里。</p><p>这也是为什么第 5 章要把「一段逻辑」装进函数：当分支和循环多到一定程度，必须靠函数把它们切块，否则一个文件会变成几百行没人敢改的迷宫。</p><h2>if / else if / else</h2><p>最基本的分支结构长这样：</p><pre><code class="lang-js"><span class="tok-k">const</span> score = <span class="tok-n">85</span>;
+
+<span class="tok-k">if</span> (score &gt;= <span class="tok-n">90</span>) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'优秀'</span>);
+} <span class="tok-k">else</span> <span class="tok-k">if</span> (score &gt;= <span class="tok-n">60</span>) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'及格'</span>);
+} <span class="tok-k">else</span> {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'不及格'</span>);
+}
+<span class="tok-c">// 输出: 及格</span></code></pre><p>规则很简单：从上往下判断，<strong>命中第一个为 true 的条件后就跳过后面所有分支</strong>。<code>else</code> 是可选的，<code>else if</code> 可以有很多个。</p><p>还有一个容易忽略的差别：<code>else if</code> 之间是<strong>互斥</strong>的，几个独立的 <code>if</code> 是<strong>各判各的</strong>。如果你只想要一个结果（等级、状态），必须用 <code>else if</code>；如果几件事可以同时成立（比如给一条数据同时打多个标签），才用多个 <code>if</code>。把互斥条件写成多个 <code>if</code>，同一段逻辑可能被执行两次。</p><p>条件位置放什么都可以，JS 会按第 2 章讲的真假值规则转成布尔。<code>if ([])</code> 会进入，因为空数组是真值；判断空数组要写 <code>if (arr.length === 0)</code>。这类坑在第 2 章列过，这里不再重复，只提醒一句：<strong>条件尽量写成明确的比较</strong>，不要依赖隐式转换。</p><h3>条件里不要写赋值</h3><p>这是新手最常犯、也最难查的错误：</p><pre><code class="lang-js"><span class="tok-c">// 1. 顺序反了：大范围的条件放前面，会把小范围的全部吞掉</span>
+<span class="tok-k">const</span> score = <span class="tok-n">95</span>;
+<span class="tok-k">if</span> (score &gt;= <span class="tok-n">60</span>) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'及格'</span>);
+} <span class="tok-k">else</span> <span class="tok-k">if</span> (score &gt;= <span class="tok-n">90</span>) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'优秀'</span>);   <span class="tok-c">// 永远走不到</span>
+}
+<span class="tok-c">// 输出: 及格</span>
+
+<span class="tok-c">// 2. 条件里误写成赋值</span>
+<span class="tok-k">let</span> isLogin = <span class="tok-k">false</span>;
+<span class="tok-k">if</span> (isLogin = <span class="tok-k">true</span>) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'当成已登录'</span>);   <span class="tok-c">// 输出: 当成已登录</span>
+}</code></pre><p>第一段的问题不在语法，而在顺序：<code>95 &gt;= 60</code> 成立，后面的 <code>&gt;= 90</code> 就没机会了。写多档判断时，<strong>条件要从严到宽</strong>，先写最难满足的。</p><p>第二段把 <code>===</code> 写成了 <code>=</code>。赋值表达式的值是赋进去的那个值，<code>true</code> 是真值，所以条件永远成立，而且 <code>isLogin</code> 被永久改成了 <code>true</code>。编辑器通常会给出警告，但你不能指望它。</p><h3>大括号能省，但别省</h3><p>只有一行语句时，JS 允许写成 <code>if (ok) console.log('通过');</code>。这种压缩会埋两个雷。</p><p>一是后面补第二行时容易忘加大括号。<code>if (ok) a(); b();</code> 看起来两句都在条件里，实际只有 <code>a()</code> 受控制，<code>b()</code> 不管 <code>ok</code> 是什么都会执行。</p><p>二是「悬空 else」：<code>else</code> 永远配对最近的 <code>if</code>。写成 <code>if (a) if (b) x(); else y();</code> 时，缩进会让人以为 <code>else</code> 配的是外层，实际它配的是内层 <code>if (b)</code>，也就是「a 为真但 b 为假」时才走 <code>y()</code>。</p><p>团队规范里通常要求<strong>一律写大括号</strong>，省下的两行不值得换一次线上 bug。</p><h2>嵌套 if 与提前 return</h2><p>判断条件一多，最自然的写法是一层层往里缩：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">getDiscount</span>(user) {
+  <span class="tok-k">if</span> (user) {
+    <span class="tok-k">if</span> (user.isVip) {
+      <span class="tok-k">if</span> (user.level &gt;= <span class="tok-n">3</span>) {
+        <span class="tok-k">return</span> <span class="tok-n">0.7</span>;
+      }
+    }
+  }
+  <span class="tok-k">return</span> <span class="tok-n">1</span>;
+}
+
+console.<span class="tok-f">log</span>(<span class="tok-f">getDiscount</span>({ isVip: <span class="tok-k">true</span>, level: <span class="tok-n">3</span> }));   <span class="tok-c">// 输出: 0.7</span>
+console.<span class="tok-f">log</span>(<span class="tok-f">getDiscount</span>(<span class="tok-k">null</span>));                        <span class="tok-c">// 输出: 1</span></code></pre><p>这段代码是对的，但读它的时候，你的脑子要同时记住三层条件，还得记住每层不成立时会掉到哪。行数不多，心智负担不小。</p><p>把「不满足就提前退出」的条件挪到最前面，叫<strong>卫语句（guard clause）</strong>：</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">getDiscount</span>(user) {
+  <span class="tok-k">if</span> (!user) <span class="tok-k">return</span> <span class="tok-n">1</span>;              <span class="tok-c">// 没用户，原价</span>
+  <span class="tok-k">if</span> (!user.isVip) <span class="tok-k">return</span> <span class="tok-n">1</span>;        <span class="tok-c">// 不是会员，原价</span>
+  <span class="tok-k">if</span> (user.level &lt; <span class="tok-n">3</span>) <span class="tok-k">return</span> <span class="tok-n">1</span>;     <span class="tok-c">// 等级不够，原价</span>
+  <span class="tok-k">return</span> <span class="tok-n">0.7</span>;                       <span class="tok-c">// 剩下的就是会员折扣</span>
+}
+
+console.<span class="tok-f">log</span>(<span class="tok-f">getDiscount</span>({ isVip: <span class="tok-k">true</span>, level: <span class="tok-n">3</span> }));   <span class="tok-c">// 输出: 0.7</span>
+console.<span class="tok-f">log</span>(<span class="tok-f">getDiscount</span>({ isVip: <span class="tok-k">true</span>, level: <span class="tok-n">1</span> }));   <span class="tok-c">// 输出: 1</span>
+console.<span class="tok-f">log</span>(<span class="tok-f">getDiscount</span>(<span class="tok-k">null</span>));                        <span class="tok-c">// 输出: 1</span></code></pre><p>改完之后，主逻辑平铺在最后一行，前面全是「什么情况下不算」。这种写法能一路用到写接口、写页面逻辑，是后面所有章节的默认风格。</p><p>它依赖 <code>return</code>，而 <code>return</code> 只能在函数里用。第 5 章会系统讲函数，现在先记住：<strong>能提前退出，就别往里嵌套</strong>。</p><h2>switch</h2><p>当一个值要和好几个固定值比较时，<code>switch</code> 比一长串 <code>else if</code> 干净：</p><pre><code class="lang-js"><span class="tok-k">const</span> status = <span class="tok-s">'paid'</span>;
+
+<span class="tok-k">switch</span> (status) {
+  <span class="tok-k">case</span> <span class="tok-s">'pending'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'等待支付'</span>);
+    <span class="tok-k">break</span>;
+  <span class="tok-k">case</span> <span class="tok-s">'paid'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'已支付'</span>);
+    <span class="tok-k">break</span>;
+  <span class="tok-k">case</span> <span class="tok-s">'shipped'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'已发货'</span>);
+    <span class="tok-k">break</span>;
+  <span class="tok-k">default</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'未知状态'</span>);
+}
+<span class="tok-c">// 输出: 已支付</span></code></pre><p>执行逻辑是：拿 <code>status</code> 和一个一个 <code>case</code> 做<strong>严格相等</strong>比较，命中后开始执行，直到遇到 <code>break</code> 或 <code>switch</code> 结束。<code>default</code> 是没有命中任何 <code>case</code> 时的兜底，位置可以放最后，也可以放中间。</p><h3>break 与「穿透」</h3><p>漏写 <code>break</code> 不会报错，但会继续执行下一个 <code>case</code> 的代码，这叫<strong>穿透（fallthrough）</strong>：</p><pre><code class="lang-js"><span class="tok-c">// 忘记 break：从命中的 case 一路往下执行</span>
+<span class="tok-k">const</span> level = <span class="tok-s">'B'</span>;
+<span class="tok-k">switch</span> (level) {
+  <span class="tok-k">case</span> <span class="tok-s">'A'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'A'</span>);
+  <span class="tok-k">case</span> <span class="tok-s">'B'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'B'</span>);
+  <span class="tok-k">case</span> <span class="tok-s">'C'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'C'</span>);
+    <span class="tok-k">break</span>;
+  <span class="tok-k">default</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'默认'</span>);
+}
+<span class="tok-c">// 输出: B</span>
+<span class="tok-c">// 输出: C</span>
+
+<span class="tok-c">// 故意不写 break：多个值共用同一段逻辑</span>
+<span class="tok-k">const</span> size = <span class="tok-n">2</span>;
+<span class="tok-k">switch</span> (size) {
+  <span class="tok-k">case</span> <span class="tok-n">1</span>:
+  <span class="tok-k">case</span> <span class="tok-n">2</span>:
+  <span class="tok-k">case</span> <span class="tok-n">3</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'小号或中号'</span>);
+    <span class="tok-k">break</span>;
+  <span class="tok-k">default</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'其他'</span>);
+}
+<span class="tok-c">// 输出: 小号或中号</span></code></pre><p>第一段里，<code>'B'</code> 命中后打印 B，因为没有 <code>break</code>，继续打印 C 才停。这就是很多「莫名其妙执行了两段逻辑」的来源。</p><p>第二段是有意为之：<code>case 1</code>、<code>case 2</code> 后面什么都不写，让它们直接落到共用逻辑上。这是 <code>switch</code> 少数值得保留的用法，但<strong>必须加一行注释说明「这里是故意的」</strong>，否则下一个人会以为是漏写。</p><h3>值必须是同一个，且用 === 比较</h3><p>先看一个表单场景的坑：<code>switch ('1')</code> 配 <code>case 1</code> 不会命中。<code>switch</code> 用的是严格相等，字符串 <code>'1'</code> 和数字 <code>1</code> 类型不同，直接掉进 <code>default</code>。**用 <code>switch</code> 处理用户输入时，先把值转成数字**。</p><pre><code class="lang-js"><span class="tok-c">// 按月份判断天数，正好利用穿透</span>
+<span class="tok-k">const</span> month = <span class="tok-n">2</span>;
+<span class="tok-k">switch</span> (month) {
+  <span class="tok-k">case</span> <span class="tok-n">1</span>:
+  <span class="tok-k">case</span> <span class="tok-n">3</span>:
+  <span class="tok-k">case</span> <span class="tok-n">5</span>:
+  <span class="tok-k">case</span> <span class="tok-n">7</span>:
+  <span class="tok-k">case</span> <span class="tok-n">8</span>:
+  <span class="tok-k">case</span> <span class="tok-n">10</span>:
+  <span class="tok-k">case</span> <span class="tok-n">12</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'31 天'</span>);
+    <span class="tok-k">break</span>;
+  <span class="tok-k">case</span> <span class="tok-n">4</span>:
+  <span class="tok-k">case</span> <span class="tok-n">6</span>:
+  <span class="tok-k">case</span> <span class="tok-n">9</span>:
+  <span class="tok-k">case</span> <span class="tok-n">11</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'30 天'</span>);
+    <span class="tok-k">break</span>;
+  <span class="tok-k">case</span> <span class="tok-n">2</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'28 或 29 天'</span>);   <span class="tok-c">// 输出: 28 或 29 天</span>
+    <span class="tok-k">break</span>;
+  <span class="tok-k">default</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'月份不合法'</span>);
+}</code></pre><p><code>case</code> 可以堆叠，天然表达「这几个值归为一类」。月份这种「一个结果对应多个输入」的场景，用 <code>if</code> 要重复写六次 <code>month === 1 || month === 3 || ...</code>，用 <code>switch</code> 一眼就能看出分组。</p><h3>switch 还是 if</h3><p>选择标准只有两条：</p><ul><li><strong>一个值 vs 多个固定值</strong>：用 <code>switch</code>。比如状态码、订单状态、星期几。</li><li><strong>范围判断或复合条件</strong>：用 <code>if</code>。比如 <code>score &gt;= 60 &amp;&amp; score &lt; 90</code>。</li></ul><p>用 <code>if</code> 硬写十个 <code>===</code> 会很啰嗦；用 <code>switch</code> 硬写范围判断则根本写不出来，因为 <code>case</code> 只接受值，不接受表达式（<code>case score &gt;= 60:</code> 是合法的语法，但比较的是 <code>true === (score &gt;= 60)</code>，几乎不会是你想要的）。</p><p>另外，<code>switch</code> 在函数里可以省略 <code>break</code>，改成每个 <code>case</code> 直接 <code>return</code>，例如 <code>case 'paid': return '已支付';</code>。少了 <code>break</code>，也就没有穿透的机会，这是写状态映射时最稳的形态。</p><h2>for 循环</h2><p><code>for</code> 是唯一能精确控制「跑几次」的循环：</p><pre><code class="lang-js"><span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">0</span>; i &lt; <span class="tok-n">3</span>; i++) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'第 '</span> + i + <span class="tok-s">' 轮'</span>);
+}
+<span class="tok-c">// 输出: 第 0 轮</span>
+<span class="tok-c">// 输出: 第 1 轮</span>
+<span class="tok-c">// 输出: 第 2 轮</span></code></pre><p>括号里用两个分号隔开三段：初始化、条件、每轮结束后的更新。它们不是同时执行的，顺序固定：</p><div class="table-wrap"><table><thead><tr><th>顺序</th><th>执行内容</th><th>时机</th></tr></thead><tbody><tr><td>1</td><td><code>let i = 0</code></td><td>循环开始前，只执行一次</td></tr><tr><td>2</td><td><code>i &lt; 3</code></td><td>每轮开始前判断</td></tr><tr><td>3</td><td>循环体 <code>console.log(...)</code></td><td>条件为 true 时</td></tr><tr><td>4</td><td><code>i++</code></td><td>循环体结束后</td></tr><tr><td>5</td><td>回到第 2 步</td><td>直到条件为 false</td></tr></tbody></table></div><p>由此可以推出：<code>i</code> 第一次进循环体时是 0，最后一次是 2，循环结束后变成 3。任何「为什么少跑一次 / 多跑一次」的问题，都可以用这张表推出来。</p><p>两层循环的阅读方法是固定的：先看外层在遍历什么，再看内层每次做什么。外层是行，内层是列；外层是分组，内层是组内元素。卡住的时候，用 3 条小数据在纸上画一遍执行过程，比盯着代码看快得多。</p><p><code>for</code> 适合「次数确定」或「需要用下标」的场景：遍历数组、生成 1 到 n、倒序删除。次数不确定、只知道退出条件时，用 <code>while</code> 更自然。两者可以互相改写，选更贴近问题描述的那个。</p><p>三段都可以省略。<code>for (;;)</code> 是合法的，等于无限循环；<code>for (let i = 0; ; i++)</code> 则需要靠 <code>break</code> 退出。初学阶段不建议省略条件，很容易写出死循环。</p><h3>差一错误（off-by-one）</h3><p>索引从 0 开始，所以「最后一个元素」的下标是 <code>length - 1</code>。把 <code>&lt;=</code> 写成 <code>&lt;</code> 或反过来，是循环里最高频的 bug：</p><pre><code class="lang-js"><span class="tok-k">const</span> list = [<span class="tok-s">'a'</span>, <span class="tok-s">'b'</span>, <span class="tok-s">'c'</span>];
+
+<span class="tok-c">// 想从后往前处理，倒序最安全</span>
+<span class="tok-k">for</span> (<span class="tok-k">let</span> i = list.length - <span class="tok-n">1</span>; i &gt;= <span class="tok-n">0</span>; i--) {
+  console.<span class="tok-f">log</span>(i, list[i]);
+}
+<span class="tok-c">// 输出: 2 c</span>
+<span class="tok-c">// 输出: 1 b</span>
+<span class="tok-c">// 输出: 0 a</span>
+
+<span class="tok-c">// 边界写错：多跑一轮，最后拿到 undefined</span>
+<span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">0</span>; i &lt;= list.length; i++) {
+  console.<span class="tok-f">log</span>(list[i]);
+}
+<span class="tok-c">// 输出: a</span>
+<span class="tok-c">// 输出: b</span>
+<span class="tok-c">// 输出: c</span>
+<span class="tok-c">// 输出: undefined</span></code></pre><p>倒序遍历在做「边遍历边删除」时特别有用。正序遍历删元素，后面的元素会往前补位，你刚跳过的那个下标正好装着新元素，于是漏删一半。第 6 章讲数组方法时会给出更省心的替代方案。</p><p><code>undefined</code> 出现在最后一行，不会报错，所以这种 bug 很隐蔽——页面只是多了一个空项，你要盯很久才能发现。</p><h3>循环变量用 let，不要用 var</h3><pre><code class="lang-js"><span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">0</span>; i &lt; <span class="tok-n">3</span>; i++) {
+  <span class="tok-f">setTimeout</span>(<span class="tok-k">function</span> () {
+    console.<span class="tok-f">log</span>(i);
+  }, <span class="tok-n">0</span>);
+}
+<span class="tok-c">// 输出: 0</span>
+<span class="tok-c">// 输出: 1</span>
+<span class="tok-c">// 输出: 2</span>
+
+<span class="tok-k">for</span> (<span class="tok-k">var</span> j = <span class="tok-n">0</span>; j &lt; <span class="tok-n">3</span>; j++) {
+  <span class="tok-f">setTimeout</span>(<span class="tok-k">function</span> () {
+    console.<span class="tok-f">log</span>(j);
+  }, <span class="tok-n">0</span>);
+}
+<span class="tok-c">// 输出: 3</span>
+<span class="tok-c">// 输出: 3</span>
+<span class="tok-c">// 输出: 3</span></code></pre><p>同一段逻辑，<code>let</code> 打印 0、1、2，<code>var</code> 打印三个 3。原因是 <code>var</code> 声明的 <code>j</code> 在整个作用域里只有一份，等定时器真的要执行时，循环早已跑完，<code>j</code> 停在 3。</p><p>第 9 章会用作用域（scope）和闭包（closure）解释这个现象，现在先记住结论：**循环变量一律用 <code>let</code>**。第 2 章说过 <code>var</code> 不要用，这是它在实际代码里最常造成事故的地方。</p><h2>while 与 do...while</h2><p><code>while</code> 适合「不知道要跑几次，只知道什么时候停」：</p><pre><code class="lang-js"><span class="tok-k">let</span> i = <span class="tok-n">0</span>;
+<span class="tok-k">while</span> (i &lt; <span class="tok-n">3</span>) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'while'</span>, i);
+  i += <span class="tok-n">1</span>;          <span class="tok-c">// 忘写这行就是死循环</span>
+}
+<span class="tok-c">// 输出: while 0</span>
+<span class="tok-c">// 输出: while 1</span>
+<span class="tok-c">// 输出: while 2</span>
+
+<span class="tok-k">let</span> n = <span class="tok-n">0</span>;
+<span class="tok-k">do</span> {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'do'</span>, n);
+  n += <span class="tok-n">1</span>;
+} <span class="tok-k">while</span> (n &lt; <span class="tok-n">0</span>);
+<span class="tok-c">// 输出: do 0   ← 条件一开始就是 false，仍然执行了一次</span></code></pre><p><code>while</code> 先判断再执行，<code>do...while</code> 先执行再判断：</p><div class="table-wrap"><table><thead><tr><th>对比</th><th>while</th><th>do...while</th></tr></thead><tbody><tr><td>判断时机</td><td>先判断，后执行</td><td>先执行，后判断</td></tr><tr><td>可能一次都不执行</td><td>是</td><td>否</td></tr><tr><td>适合</td><td>次数未知，可能为 0</td><td>至少要执行一次</td></tr></tbody></table></div><p>「必须执行一次」的场景比你想的多。比如让用户输入，至少要先问一次才能判断输入是否合法。下面两段都是 <code>while</code> 家族在业务里的典型形态：</p><pre><code class="lang-js"><span class="tok-c">// 至少问一次，直到输入合法</span>
+<span class="tok-k">let</span> answer;
+<span class="tok-k">do</span> {
+  answer = <span class="tok-f">prompt</span>(<span class="tok-s">'请输入 yes 或 no'</span>);
+} <span class="tok-k">while</span> (answer !== <span class="tok-s">'yes'</span> &amp;&amp; answer !== <span class="tok-s">'no'</span>);
+
+<span class="tok-c">// 重试直到成功，或达到次数上限</span>
+<span class="tok-k">let</span> retry = <span class="tok-n">0</span>;
+<span class="tok-k">let</span> success = <span class="tok-k">false</span>;
+<span class="tok-k">while</span> (!success &amp;&amp; retry &lt; <span class="tok-n">3</span>) {
+  retry += <span class="tok-n">1</span>;
+  success = <span class="tok-f">tryRequest</span>();
+}</code></pre><p>用 <code>while</code> 写第一段，得在循环外面先写一遍 <code>prompt</code>，再把同样的代码放进循环里，重复且容易改漏。</p><p>第一段还藏着一个坑：用户点「取消」时 <code>prompt</code> 返回 <code>null</code>，条件永远成立，循环就出不来了。真实项目里要么加 <code>answer === null</code> 的退出判断，要么加最大尝试次数。</p><p>第二段里的 <code>tryRequest</code> 是假想函数，完整写法要到第 13 章讲异步时才出现。这里先体会结构：<strong>条件里放两个变量，一个控制业务状态，一个兜底防止无限重试</strong>。这种「业务条件 + 次数上限」的组合，是后面写网络请求重试的标准模板。</p><h2>break 与 continue</h2><p>两个词都只影响循环，区别是范围：</p><ul><li><code>continue</code>：跳过本轮剩下的代码，直接进入下一轮。</li><li><code>break</code>：整个循环立刻结束。</li></ul><pre><code class="lang-js"><span class="tok-k">for</span> (<span class="tok-k">const</span> n <span class="tok-k">of</span> [<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>, <span class="tok-n">4</span>, <span class="tok-n">5</span>]) {
+  <span class="tok-k">if</span> (n === <span class="tok-n">2</span>) <span class="tok-k">continue</span>;   <span class="tok-c">// 跳过本次</span>
+  <span class="tok-k">if</span> (n === <span class="tok-n">4</span>) <span class="tok-k">break</span>;      <span class="tok-c">// 结束整个循环</span>
+  console.<span class="tok-f">log</span>(n);
+}
+<span class="tok-c">// 输出: 1</span>
+<span class="tok-c">// 输出: 3</span>
+
+<span class="tok-c">// break 只跳出内层，外层继续</span>
+<span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">1</span>; i &lt;= <span class="tok-n">3</span>; i++) {
+  <span class="tok-k">for</span> (<span class="tok-k">let</span> j = <span class="tok-n">1</span>; j &lt;= <span class="tok-n">3</span>; j++) {
+    <span class="tok-k">if</span> (j === <span class="tok-n">2</span>) <span class="tok-k">break</span>;
+    console.<span class="tok-f">log</span>(i, j);
+  }
+}
+<span class="tok-c">// 输出: 1 1</span>
+<span class="tok-c">// 输出: 2 1</span>
+<span class="tok-c">// 输出: 3 1</span>
+
+<span class="tok-c">// 想一次跳出两层：把循环放进函数，用 return</span>
+<span class="tok-k">function</span> <span class="tok-f">findPair</span>() {
+  <span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">1</span>; i &lt;= <span class="tok-n">3</span>; i++) {
+    <span class="tok-k">for</span> (<span class="tok-k">let</span> j = <span class="tok-n">1</span>; j &lt;= <span class="tok-n">3</span>; j++) {
+      <span class="tok-k">if</span> (i * j === <span class="tok-n">4</span>) <span class="tok-k">return</span> i + <span class="tok-s">' x '</span> + j;
+    }
+  }
+  <span class="tok-k">return</span> <span class="tok-s">'没找到'</span>;
+}
+console.<span class="tok-f">log</span>(<span class="tok-f">findPair</span>());   <span class="tok-c">// 输出: 2 x 2</span>
+
+<span class="tok-c">// 带标签的 break 也能做到，但少用</span>
+outer:
+<span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">1</span>; i &lt;= <span class="tok-n">3</span>; i++) {
+  <span class="tok-k">for</span> (<span class="tok-k">let</span> j = <span class="tok-n">1</span>; j &lt;= <span class="tok-n">3</span>; j++) {
+    <span class="tok-k">if</span> (i * j === <span class="tok-n">4</span>) <span class="tok-k">break</span> outer;
+  }
+}
+console.<span class="tok-f">log</span>(<span class="tok-s">'跳出来了'</span>);   <span class="tok-c">// 输出: 跳出来了</span></code></pre><p><code>n</code> 是 1 时正常打印；2 被 <code>continue</code> 跳过；3 打印；4 触发 <code>break</code>，后面全不执行。</p><p>第二段里，内层每次到 <code>j === 2</code> 就退出，外层继续下一轮，所以每轮只打印一次。这就是 <code>break</code> 的边界：<strong>它只结束最近的一层循环</strong>，外面的 <code>for</code> 完全不受影响。</p><p>第三段是推荐做法：把「找一对数」这件事封装成函数，<code>return</code> 天然能结束整个函数，也就结束了里面所有循环。可读性比标签好得多。</p><p>第四段的 <code>outer:</code> 是<strong>标签（label）</strong>，<code>break outer</code> 能直接跳出指定那层。语法合法，但阅读时要上下找标签，团队里通常不鼓励。知道有这个写法即可，真遇到时优先改成函数。</p><h2>for...of：遍历值</h2><p>遍历数组最推荐的写法：</p><pre><code class="lang-js"><span class="tok-k">const</span> fruits = [<span class="tok-s">'苹果'</span>, <span class="tok-s">'香蕉'</span>, <span class="tok-s">'橙子'</span>];
+
+<span class="tok-k">for</span> (<span class="tok-k">const</span> fruit <span class="tok-k">of</span> fruits) {
+  console.<span class="tok-f">log</span>(fruit);
+}
+<span class="tok-c">// 输出: 苹果</span>
+<span class="tok-c">// 输出: 香蕉</span>
+<span class="tok-c">// 输出: 橙子</span>
+
+<span class="tok-c">// 需要索引时用 entries()</span>
+<span class="tok-k">for</span> (<span class="tok-k">const</span> entry <span class="tok-k">of</span> fruits.<span class="tok-f">entries</span>()) {
+  console.<span class="tok-f">log</span>(entry[<span class="tok-n">0</span>], entry[<span class="tok-n">1</span>]);
+}
+<span class="tok-c">// 输出: 0 苹果</span>
+<span class="tok-c">// 输出: 1 香蕉</span>
+<span class="tok-c">// 输出: 2 橙子</span>
+
+<span class="tok-c">// 字符串也能遍历</span>
+<span class="tok-k">for</span> (<span class="tok-k">const</span> ch <span class="tok-k">of</span> <span class="tok-s">'abc'</span>) {
+  console.<span class="tok-f">log</span>(ch);
+}
+<span class="tok-c">// 输出: a</span>
+<span class="tok-c">// 输出: b</span>
+<span class="tok-c">// 输出: c</span></code></pre><p><code>for...of</code> 直接给你<strong>值</strong>，不用管下标，也就没有差一错误。<code>entries()</code> 返回 <code>[下标, 值]</code> 的小数组，需要序号时用它。</p><p>需要注意两点。第一，循环变量写 <code>const</code> 就行，每轮都是一个新变量，重新赋值会报错，正好防止你误改。第二，<code>for...of</code> 只能用于<strong>可迭代对象</strong>，普通对象不能用，<code>for (const x of { a: 1 })</code> 会抛 <code>TypeError: {} is not iterable</code>。</p><p>和普通 <code>for</code> 比，<code>for...of</code> 省掉了下标，但也少了两个能力：拿不到索引（要 <code>entries()</code>），也不能随意改步长。日常遍历数组九成用 <code>for...of</code>，需要「倒着走」「隔一个取一个」时才退回普通 <code>for</code>。</p><p><code>for...of</code> 还有一个好处：可以用 <code>break</code> 和 <code>continue</code>。第 6 章会讲 <code>forEach</code>，代码更短，但中途退出不了。两种写法各有场合，看到 <code>forEach</code> 里想 <code>break</code> 的时候，换成 <code>for...of</code> 就行。</p><h2>for...in：遍历键，以及它的坑</h2><p><code>for...in</code> 遍历的是<strong>属性名</strong>，主要给对象用。把它用在数组上，问题立刻暴露：</p><pre><code class="lang-js"><span class="tok-k">const</span> user = { name: <span class="tok-s">'小明'</span>, age: <span class="tok-n">18</span> };
+<span class="tok-k">for</span> (<span class="tok-k">const</span> key <span class="tok-k">in</span> user) {
+  console.<span class="tok-f">log</span>(key, user[key]);
+}
+<span class="tok-c">// 输出: name 小明</span>
+<span class="tok-c">// 输出: age 18</span>
+
+<span class="tok-c">// 换成数组，拿到的是字符串下标</span>
+<span class="tok-k">const</span> arr = [<span class="tok-s">'a'</span>, <span class="tok-s">'b'</span>];
+<span class="tok-k">for</span> (<span class="tok-k">const</span> key <span class="tok-k">in</span> arr) {
+  console.<span class="tok-f">log</span>(<span class="tok-k">typeof</span> key, key);
+}
+<span class="tok-c">// 输出: string 0</span>
+<span class="tok-c">// 输出: string 1</span>
+
+<span class="tok-c">// 原型链上的属性也会被算进来</span>
+<span class="tok-k">const</span> base = { inherited: <span class="tok-s">'来自原型'</span> };
+<span class="tok-k">const</span> obj = Object.<span class="tok-f">create</span>(base);
+obj.own = <span class="tok-s">'自己的'</span>;
+<span class="tok-k">for</span> (<span class="tok-k">const</span> key <span class="tok-k">in</span> obj) {
+  console.<span class="tok-f">log</span>(key);
+}
+<span class="tok-c">// 输出: own</span>
+<span class="tok-c">// 输出: inherited</span>
+
+<span class="tok-c">// 更稳的做法：只取自己的属性</span>
+console.<span class="tok-f">log</span>(Object.<span class="tok-f">keys</span>(obj));      <span class="tok-c">// 输出: [ 'own' ]</span>
+console.<span class="tok-f">log</span>(Object.<span class="tok-f">entries</span>(obj));   <span class="tok-c">// 输出: [ [ 'own', '自己的' ] ]</span></code></pre><p>拿到的是字符串 <code>'0'</code>、<code>'1'</code>，不是数字。做 <code>key + 1</code> 会变成 <code>'01'</code>，做 <code>arr[key]</code> 虽然能取到值，但任何依赖数字下标的运算都会出错。**遍历数组请用 <code>for...of</code> 或普通 <code>for</code>**。</p><p>第二个坑是原型链。<code>Object.create(base)</code> 造出来的对象会继承 <code>base</code> 的属性，<code>for...in</code> 把这些继承来的属性也算进循环，上面那段就是证明。你只想要自己的 <code>own</code>，结果多出一个 <code>inherited</code>，后续渲染或统计就全错了。第 7 章讲对象时会详细说属性和原型，第 11 章讲原型链（prototype chain）时会解释 <code>Object.create</code> 到底做了什么。</p><p>结论：**遍历对象用 <code>Object.keys</code> / <code>Object.entries</code>，遍历数组用 <code>for...of</code>**。<code>for...in</code> 只在明确需要「连同继承属性一起看」时才有用，日常几乎用不到。</p><h2>用嵌套循环打印图形</h2><p>两层循环是理解「外层管行、内层管列」的最好练习。九九乘法表：</p><pre><code class="lang-js"><span class="tok-c">// 九九乘法表</span>
+<span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">1</span>; i &lt;= <span class="tok-n">9</span>; i++) {
+  <span class="tok-k">let</span> line = <span class="tok-s">''</span>;
+  <span class="tok-k">for</span> (<span class="tok-k">let</span> j = <span class="tok-n">1</span>; j &lt;= i; j++) {
+    line += j + <span class="tok-s">'×'</span> + i + <span class="tok-s">'='</span> + (i * j) + <span class="tok-s">' '</span>;
+  }
+  console.<span class="tok-f">log</span>(line);
+}
+<span class="tok-c">// 输出（前 3 行，行尾各有一个空格）:</span>
+<span class="tok-c">// 1×1=1 </span>
+<span class="tok-c">// 1×2=2 2×2=4 </span>
+<span class="tok-c">// 1×3=3 2×3=6 3×3=9 </span>
+
+<span class="tok-c">// 星号金字塔</span>
+<span class="tok-k">for</span> (<span class="tok-k">let</span> row = <span class="tok-n">1</span>; row &lt;= <span class="tok-n">5</span>; row++) {
+  <span class="tok-k">const</span> spaces = <span class="tok-s">' '</span>.<span class="tok-f">repeat</span>(<span class="tok-n">5</span> - row);
+  <span class="tok-k">const</span> stars = <span class="tok-s">'*'</span>.<span class="tok-f">repeat</span>(row * <span class="tok-n">2</span> - <span class="tok-n">1</span>);
+  console.<span class="tok-f">log</span>(spaces + stars);
+}
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">//     *</span>
+<span class="tok-c">//    ***</span>
+<span class="tok-c">//   *****</span>
+<span class="tok-c">//  *******</span>
+<span class="tok-c">// *********</span></code></pre><p>乘法表里，外层 <code>i</code> 控制「第几行」，内层 <code>j</code> 从 1 跑到 <code>i</code>，所以第 3 行只有 3 个算式。<code>line</code> 每行重新清空，这一点如果忘了，上一行的内容会一直累加。</p><p>第一行 4 个空格加 1 个星，第二行 3 个空格加 3 个星，规律是「空格数 = 总层数 - 当前层，星数 = 当前层 * 2 - 1」。找出这个规律，比背代码重要——所有图案题都是这个套路。</p><h2>死循环：怎么产生，怎么中断</h2><p>死循环是条件永远为 true，循环体永远结束不了。最常见的三种来源：</p><pre><code class="lang-js"><span class="tok-c">// 1. 忘了更新条件（不要直接运行）</span>
+<span class="tok-c">// let i = 0;</span>
+<span class="tok-c">// while (i &lt; 5) {</span>
+<span class="tok-c">//   console.log(i);</span>
+<span class="tok-c">// }</span>
+
+<span class="tok-c">// 2. 条件恒为 true，靠 break 退出（这种写法是合法的）</span>
+<span class="tok-k">let</span> guard = <span class="tok-n">0</span>;
+<span class="tok-k">while</span> (<span class="tok-k">true</span>) {
+  guard += <span class="tok-n">1</span>;
+  <span class="tok-k">if</span> (guard &gt; <span class="tok-n">100</span>) {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'保险触发'</span>);   <span class="tok-c">// 输出: 保险触发</span>
+    <span class="tok-k">break</span>;
+  }
+}
+
+<span class="tok-c">// 3. 浮点步进跳过了终点</span>
+<span class="tok-k">let</span> count = <span class="tok-n">0</span>;
+<span class="tok-k">for</span> (<span class="tok-k">let</span> x = <span class="tok-n">0</span>; x !== <span class="tok-n">1</span>; x += <span class="tok-n">0.1</span>) {
+  count += <span class="tok-n">1</span>;
+  <span class="tok-k">if</span> (count &gt; <span class="tok-n">20</span>) <span class="tok-k">break</span>;   <span class="tok-c">// 没有这行会一直跑</span>
+}
+console.<span class="tok-f">log</span>(count);   <span class="tok-c">// 输出: 21</span></code></pre><p>第一种是忘了 <code>i += 1</code>，条件永远成立。第二种是主动写的无限循环，本身合法，但必须有 <code>break</code> 出口。第三种最隐蔽：<code>x += 0.1</code> 累加到最后是 <code>0.9999999999999999</code>，再下一步直接跳到 <code>1.0999999999999999</code>，永远不会等于 1，条件永远成立。这类循环要用 <code>x &lt; 1</code> 而不是 <code>x !== 1</code>。</p><p>循环真的卡住时，中断方式分两种：</p><ul><li><strong>浏览器</strong>：标签页会转圈、点不动，直接关闭这个标签页。Chrome 有时会弹「页面无响应」，可以选「结束」。刷新也会中断，但页面状态会丢。</li><li><strong>Node</strong>：在终端里按 <code>Ctrl + C</code>。</li></ul><p>死循环不总是错误。事件循环、服务器监听、游戏主循环，本质上都是「一直跑，直到收到退出信号」，所以 <code>while (true)</code> 是合法写法，前提是里面有明确的 <code>break</code>。真正的问题是「你以为是有限循环，实际条件永远成立」，这类 bug 往往在数据为空或某个值异常时才会出现。</p><p>排查时先做一件事：在循环体第一行打印循环变量。如果它一直不变，说明更新那行没执行；如果它疯涨，说明终止条件写错了；如果它是 <code>NaN</code>，说明参与计算的某个值有问题。</p><p>预防比中断重要。写循环时养成三个习惯：先用小数据（3 次、5 条）验证；<code>while</code> 里确认有变量在向终止条件靠近；不确定时加一个计数器当保险丝，比如 <code>let tries = 0;</code> 配合 <code>if (tries &gt; 10000) break;</code>，宁可少做一点，也别把浏览器卡死。</p><h2>常见误区清单</h2><div class="table-wrap"><table><thead><tr><th>写法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td><code>if (x = 1)</code></td><td>条件永远成立</td><td>赋值结果是 1，真值；应写 <code>===</code></td></tr><tr><td><code>if (arr)</code> 判断空数组</td><td>会进入</td><td>数组是对象，恒为真；用 <code>length === 0</code></td></tr><tr><td>大范围条件写在小范围前面</td><td>后面的分支走不到</td><td>命中第一个 true 就结束判断</td></tr><tr><td><code>switch</code> 漏写 <code>break</code></td><td>继续执行下一个 <code>case</code></td><td>穿透（fallthrough）行为</td></tr><tr><td><code>switch ('1')</code> 配 <code>case 1</code></td><td>不匹配</td><td><code>switch</code> 用严格相等比较</td></tr><tr><td><code>for (let i = 0; i &lt;= arr.length; i++)</code></td><td>多跑一轮，拿到 <code>undefined</code></td><td>最后一个下标是 <code>length - 1</code></td></tr><tr><td><code>for...in</code> 遍历数组</td><td>下标是字符串</td><td>用 <code>for...of</code></td></tr><tr><td><code>for...in</code> 遍历对象</td><td>可能多出原型属性</td><td>用 <code>Object.keys</code></td></tr><tr><td><code>while</code> 忘了更新变量</td><td>死循环</td><td>条件永远成立</td></tr><tr><td><code>forEach</code> 里写 <code>break</code></td><td>语法错误</td><td>用 <code>for...of</code> 或 <code>some</code></td></tr><tr><td><code>do...while</code> 条件写反</td><td>多执行一次</td><td>先执行后判断</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> score = <span class="tok-n">75</span>;
+<span class="tok-k">if</span> (score &gt;= <span class="tok-n">60</span>) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'及格'</span>);
+} <span class="tok-k">else</span> <span class="tok-k">if</span> (score &gt;= <span class="tok-n">90</span>) {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'优秀'</span>);
+}</code></pre><p>输出 <code>及格</code>。<code>75 &gt;= 60</code> 先成立，后面的分支不会再判断。要想输出「优秀」，必须把 <code>&gt;= 90</code> 写在前面。</p></div></details><details class="quiz"><summary>这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">const</span> type = <span class="tok-s">'b'</span>;
+<span class="tok-k">switch</span> (type) {
+  <span class="tok-k">case</span> <span class="tok-s">'a'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'A'</span>);
+  <span class="tok-k">case</span> <span class="tok-s">'b'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'B'</span>);
+  <span class="tok-k">case</span> <span class="tok-s">'c'</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'C'</span>);
+    <span class="tok-k">break</span>;
+  <span class="tok-k">default</span>:
+    console.<span class="tok-f">log</span>(<span class="tok-s">'默认'</span>);
+}</code></pre><p>输出 <code>B</code> 和 <code>C</code>。<code>'b'</code> 命中后因为没有 <code>break</code>，会继续往下执行 <code>case 'c'</code> 的代码，到 <code>break</code> 才停。这就是穿透。</p></div></details><details class="quiz"><summary>下面两层循环一共打印多少次？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">0</span>; i &lt; <span class="tok-n">3</span>; i++) {
+  <span class="tok-k">for</span> (<span class="tok-k">let</span> j = <span class="tok-n">0</span>; j &lt; <span class="tok-n">2</span>; j++) {
+    console.<span class="tok-f">log</span>(i, j);
+  }
+}</code></pre><p>6 次。外层 3 轮，每轮内层完整跑 2 次，2 × 3 = 6。输出顺序是 <code>0 0</code>、<code>0 1</code>、<code>1 0</code>、<code>1 1</code>、<code>2 0</code>、<code>2 1</code>。</p></div></details><details class="quiz"><summary>这段代码输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">let</span> n = <span class="tok-n">5</span>;
+<span class="tok-k">do</span> {
+  console.<span class="tok-f">log</span>(n);
+  n += <span class="tok-n">1</span>;
+} <span class="tok-k">while</span> (n &lt; <span class="tok-n">3</span>);</code></pre><p>只输出 <code>5</code>。<code>do...while</code> 先执行再判断，第一次一定会跑；判断时 <code>6 &lt; 3</code> 为 false，循环结束。</p></div></details><details class="quiz"><summary>为什么不能用 <code>for...in</code> 遍历数组？</summary><div class="quiz-body"><p>它拿到的是字符串形式的下标 <code>'0'</code>、<code>'1'</code>，不是数字，做算术会变成字符串拼接；而且数组上被人为添加的属性也会被遍历出来。遍历数组用 <code>for...of</code>。</p></div></details><details class="quiz"><summary><code>break</code> 和 <code>continue</code> 有什么区别？嵌套循环里 <code>break</code> 会跳出几层？</summary><div class="quiz-body"><p><code>continue</code> 只跳过本轮剩余代码，进入下一轮；<code>break</code> 结束整个循环。嵌套时 <code>break</code> 只跳出<strong>最近的一层</strong>，想跳出所有层应把循环封装成函数用 <code>return</code>。</p></div></details><details class="quiz"><summary>下面这个循环为什么停不下来？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">for</span> (<span class="tok-k">let</span> x = <span class="tok-n">0</span>; x !== <span class="tok-n">1</span>; x += <span class="tok-n">0.1</span>) { }</code></pre><p>浮点数累加得不到精确的 1，<code>x</code> 会从 <code>0.9999999999999999</code> 直接跳到 <code>1.0999999999999999</code>，<code>x !== 1</code> 永远成立。条件应改成 <code>x &lt; 1</code>。</p></div></details><details class="quiz"><summary>用户点「取消」后，下面这段代码会怎样？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">let</span> answer;
+<span class="tok-k">do</span> {
+  answer = <span class="tok-f">prompt</span>(<span class="tok-s">'请输入 yes 或 no'</span>);
+} <span class="tok-k">while</span> (answer !== <span class="tok-s">'yes'</span> &amp;&amp; answer !== <span class="tok-s">'no'</span>);</code></pre><p>会陷入死循环。<code>prompt</code> 被取消时返回 <code>null</code>，<code>null</code> 既不等于 <code>'yes'</code> 也不等于 <code>'no'</code>，条件永远成立。需要额外判断 <code>answer === null</code> 并退出。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>写 <code>getLevel(score)</code>，用 <code>if / else if / else</code> 实现四档：90 及以上「优秀」，80 到 89「良好」，60 到 79「及格」，其余「不及格」。 验收：<code>90</code> 得「优秀」，<code>89</code> 得「良好」，<code>60</code> 得「及格」，<code>59</code> 得「不及格」，四个边界全部正确。</li></ol><ol><li>写 <code>fizzBuzz(n)</code>，用 <code>for</code> 输出 1 到 n：能被 3 整除输出 <code>Fizz</code>，能被 5 整除输出 <code>Buzz</code>，同时被 3 和 5 整除输出 <code>FizzBuzz</code>，其余输出数字本身。 验收：1 到 30 的输出中，15 和 30 是 <code>FizzBuzz</code>，9 是 <code>Fizz</code>，10 是 <code>Buzz</code>，7 是 <code>7</code>。注意判断顺序——先判断 15 的倍数，否则 <code>FizzBuzz</code> 永远出不来。</li></ol><ol><li>用两层 <code>for</code> 打印 5 层星号金字塔，要求第 1 行 1 个星、第 5 行 9 个星，且整体居中。 验收：肉眼看上去是等腰三角形，每行星号数为 <code>2 * row - 1</code>，前面空格数为 <code>5 - row</code>。</li></ol><p><strong>进阶</strong></p><ol><li>给定 <code>const nums = [3, 8, 5, 12, 7, 10]</code>，用<strong>倒序</strong> <code>for</code> 循环删除所有偶数，打印结果。 验收：输出 <code>[ 3, 5, 7 ]</code>；再用正序循环试一次，解释为什么结果会漏删，把原因写在注释里。</li></ol><ol><li>写一个猜数字游戏：答案固定为 42，用 <code>while</code> 让用户通过 <code>prompt</code> 反复输入，每次提示「大了」或「小了」，猜中后输出总次数。如果用户取消（<code>null</code>）或输入非数字，要能安全退出或提示重输。 验收：猜 50、25、42 时依次提示「大了」「小了」「猜中，共 3 次」；点取消时不会卡死。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>这一章的结构会反复出现在后面的项目里：第 6 章的 <code>map</code> / <code>filter</code> 是「循环 + 回调」的封装，第 15 章渲染列表是「循环 + 创建 DOM」，第 18 章的待办项目则是「数组 + 分支 + 循环」的组合。</p><p>如果 <code>switch</code> 的穿透和 <code>break</code> 只跳一层这两件事还觉得绕，不用急着背。写代码时先把每个 <code>case</code> 的 <code>break</code> 补齐，把嵌套循环改写成函数加 <code>return</code>，这两条习惯能挡掉绝大多数事故。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="03.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="05.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"04","title":"流程控制：条件与循环"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DOM 与事件 · JS 通勤课</title>
+<meta name="description" content="从「浏览器把 HTML 变成树」讲起，学会选中、改写、增删页面元素，再用事件、冒泡与委托让页面真正响应操作。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">DOM 与事件</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 15 章 · 约 36 分钟</div>
+    <h1>DOM 与事件</h1>
+    <p class="lede">从「浏览器把 HTML 变成树」讲起，学会选中、改写、增删页面元素，再用事件、冒泡与委托让页面真正响应操作。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>前 14 章写的代码，结果都停在控制台里。从这一章起，代码开始作用在页面上：点一下按钮，列表多一行；输入两个字，标题跟着变。</p><p>DOM 是 JS 和 HTML 之间的唯一通道，事件是页面「会动」的原因。这两件事学会，你才能把第 5 章的函数、第 6 章的数组真正用到用户看得见的地方。</p><p>第 18 章会用一个完整的待办清单把这些知识组装起来，这一章先把每一块零件讲清楚。</p></blockquote><h2>为什么需要它</h2><p>你在第 2 章学过变量，第 5 章学过函数，第 6 章学过数组。到现在为止，所有结果都打印在控制台里。控制台是给开发者看的，用户看不到。</p><p>用户看到的是页面。页面上的数字要变、列表要加一行、按钮要变色，这些都不能靠改 HTML 文件完成——服务器上的 HTML 是死的，不会因为你点了一下就自己变。</p><p>最小的一个例子是一个计数器按钮：</p><pre><code class="lang-html">&lt;button id=&quot;count-btn&quot;&gt;点了 0 次&lt;/button&gt;
+
+&lt;script&gt;
+  const btn = document.querySelector('#count-btn');
+  let count = 0;
+
+  btn.addEventListener('click', () =&gt; {
+    count = count + 1;
+    btn.textContent = `点了 ${count} 次`;
+  });
+&lt;/script&gt;</code></pre><pre><code class="lang-text">初始：点了 0 次
+点 1 次：点了 1 次
+点 3 次：点了 3 次
+刷新页面：回到「点了 0 次」</code></pre><p>这段代码只做了三件事：<strong>找到按钮、监听点击、改按钮上的文字</strong>。DOM 负责「找到和改」，事件负责「什么时候改」。整个前端交互，都是这三件事的不同组合。</p><p>但真写起来，麻烦都在细节里：选择器打错一个字符，拿到 <code>null</code>，后面全崩；用 <code>innerHTML</code> 拼了用户输入，被人注入脚本；表单提交忘了拦，页面一刷新数据全没。这一章就是把这些细节一个个拆开。</p><h2>DOM 是什么：浏览器把 HTML 变成一棵树</h2><p>浏览器收到 HTML 之后，不是把源码当字符串存着，而是逐字解析，把每个标签、每段文字变成对象，再按嵌套关系连成一棵树。这棵树叫 DOM（Document Object Model，文档对象模型）。</p><p>假设页面是这样：</p><pre><code class="lang-html">&lt;head&gt;
+  &lt;title&gt;我的待办&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;我的待办&lt;/h1&gt;
+  &lt;ul id=&quot;list&quot;&gt;
+    &lt;li class=&quot;item&quot;&gt;买牛奶&lt;/li&gt;
+    &lt;li class=&quot;item&quot;&gt;写作业&lt;/li&gt;
+  &lt;/ul&gt;
+  &lt;button id=&quot;add&quot;&gt;添加&lt;/button&gt;
+&lt;/body&gt;</code></pre><p>浏览器在内存里把它变成：</p><pre><code class="lang-text">document
+└─ html
+   ├─ head
+   │  ├─ title
+   │  └─ style
+   └─ body
+      ├─ h1             「我的待办」
+      ├─ ul#list
+      │  ├─ li.item     「买牛奶」
+      │  └─ li.item     「写作业」
+      └─ button#add     「添加」</code></pre><p>图中每一行是一个节点（node）。<code>html</code> 是 <code>document</code> 的子节点，<code>head</code> 和 <code>body</code> 是兄弟节点，两个 <code>li</code> 是 <code>ul</code> 的子节点。缩进表示父子关系，同一层表示兄弟关系。文字「买牛奶」也是一个节点，叫文本节点，只是平时我们更关心它外面的元素节点。</p><p>你写的 JS 操作的从来不是 HTML 文本，而是这棵树。改一个节点的文字，浏览器立刻重绘对应区域。</p><pre><code class="lang-js">document.title;                                   <span class="tok-c">// 输出: 我的待办</span>
+document.body.children.length;                    <span class="tok-c">// 输出: 3（h1、ul、button）</span>
+document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#list'</span>).children.length;  <span class="tok-c">// 输出: 2</span></code></pre><p><code>children</code> 只算元素；<code>childNodes</code> 会把标签之间的换行、空格也当成文本节点算进去，所以经常得到比预期大的数字。日常统计子元素用 <code>children</code>。</p><p>这里要建立一个重要认知：DOM 是内存里的活对象，不是磁盘上的 <code>.html</code> 文件。你在控制台改的东西，刷新就没了。想让数据留下来，要看第 16 章的存储。</p><h2>选中元素：querySelector 家族</h2><p>要改一个元素，先得选中它。还是用上一节那个列表，最常用的是 CSS 选择器，规则和写 CSS 时完全一样：<code>.item</code> 选 class，<code>#list</code> 选 id，<code>ul li</code> 选后代。</p><pre><code class="lang-js">document.<span class="tok-f">getElementById</span>(<span class="tok-s">'list'</span>);        <span class="tok-c">// 按 id 选，参数不带 #</span>
+document.<span class="tok-f">querySelector</span>(<span class="tok-s">'.item'</span>);        <span class="tok-c">// 第一个匹配的元素</span>
+document.<span class="tok-f">querySelectorAll</span>(<span class="tok-s">'.item'</span>);     <span class="tok-c">// 全部匹配，返回 NodeList</span>
+document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#list .item'</span>);  <span class="tok-c">// 组合选择器，选 list 里的 item</span></code></pre><p><code>querySelector</code> 返回第一个匹配的元素，找不到返回 <code>null</code>；<code>querySelectorAll</code> 返回全部，找不到时返回一个空的 NodeList，不是 <code>null</code>。这个区别很关键：空 NodeList 可以安全地 <code>.length</code>、<code>.forEach</code>，<code>null</code> 一碰就报错。</p><p><code>getElementById</code> 的参数不带 <code>#</code>，而 <code>querySelector('#list')</code> 要带。混用不会报错，只会静默返回 <code>null</code>，然后你在下一行收到一个莫名其妙的错误。</p><h3>选不到就是 null</h3><p>这段代码是前端出现频率最高的报错，没有之一：</p><pre><code class="lang-js"><span class="tok-k">const</span> title = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'.title'</span>);
+title.textContent = <span class="tok-s">'新标题'</span>;
+<span class="tok-c">// 报错: Uncaught TypeError: Cannot read properties of null (reading 'textContent')</span></code></pre><p>意思是「在一个不存在的东西上读 <code>textContent</code>」。三种常见原因：选择器拼错；脚本执行时元素还没被解析出来；元素根本在另一个页面或模板里。</p><p>写的时候先假设「它可能不在」，代码就稳了：</p><pre><code class="lang-js"><span class="tok-k">const</span> title = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'.title'</span>);
+
+<span class="tok-k">if</span> (!title) {
+  console.<span class="tok-f">warn</span>(<span class="tok-s">'页面上没有 .title，跳过'</span>);
+} <span class="tok-k">else</span> {
+  title.textContent = <span class="tok-s">'新标题'</span>;
+}</code></pre><p>用 <code>if (!el) return</code> 提前退出，比让错误炸到控制台好。也可以用可选链读 <code>el?.textContent</code>，但赋值不能写成 <code>el?.textContent = 'x'</code>，那是语法错误。读用可选链，写用 if。</p><h3>NodeList 不是数组</h3><pre><code class="lang-js"><span class="tok-k">const</span> items = document.<span class="tok-f">querySelectorAll</span>(<span class="tok-s">'.item'</span>);
+
+items.length;                       <span class="tok-c">// 输出: 2</span>
+items.<span class="tok-f">map</span>((el) =&gt; el.textContent);  <span class="tok-c">// 报错: items.map is not a function</span>
+
+<span class="tok-k">const</span> arr = Array.<span class="tok-k">from</span>(items);      <span class="tok-c">// 或 [...items]</span>
+arr.<span class="tok-f">map</span>((el) =&gt; el.textContent);    <span class="tok-c">// 输出: ['买牛奶', '写作业']</span></code></pre><p>NodeList 有 <code>length</code>、有下标、有 <code>forEach</code>，但没有 <code>map</code>、<code>filter</code>、<code>reduce</code>。它长得像数组，用起来差一半，这是初学者非常容易踩的坑。</p><p>转成真数组有两种写法，<code>Array.from(items)</code> 和 <code>[...items]</code>，效果一样。转完就能用第 6 章学的所有数组方法。</p><p>还有一点：<code>querySelectorAll</code> 返回的是调用那一刻的快照。之后新加的元素不会自动出现在旧结果里，要拿最新列表就再查一次。对比一下 <code>getElementsByClassName</code>，它返回实时的 HTMLCollection，DOM 一变它跟着变；实时听起来方便，实际更容易写出难查的 bug，新代码统一用 <code>querySelectorAll</code> 就好。</p><h2>读取与改写文本</h2><p>选中之后，最常改的是文字。<code>textContent</code> 和 <code>innerHTML</code> 长得像，行为完全不同。</p><pre><code class="lang-js"><span class="tok-k">const</span> box = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#box'</span>);
+
+box.textContent = <span class="tok-s">'&lt;b&gt;你好&lt;/b&gt;'</span>;
+<span class="tok-c">// 页面显示：&lt;b&gt;你好&lt;/b&gt;（尖括号是字面上的字符）</span>
+
+box.innerHTML = <span class="tok-s">'&lt;b&gt;你好&lt;/b&gt;'</span>;
+<span class="tok-c">// 页面显示：你好（加粗）</span></code></pre><p><code>textContent</code> 把内容当纯文本。你给它 <code>&lt;b&gt;你好&lt;/b&gt;</code>，页面上就显示这串字符，尖括号也在。<code>innerHTML</code> 把内容当 HTML 源码，浏览器会解析它，生成真正的 <code>&lt;b&gt;</code> 元素。</p><p>想要读取时，差别同样存在：</p><div class="table-wrap"><table><thead><tr><th>属性</th><th>读到什么</th><th>会解析 HTML 吗</th><th>速度</th></tr></thead><tbody><tr><td><code>textContent</code></td><td>内部所有文字，包括隐藏元素</td><td>不会，标签也算文字</td><td>快</td></tr><tr><td><code>innerText</code></td><td>只算渲染后可见的文字</td><td>不会</td><td>慢，会触发排版</td></tr><tr><td><code>innerHTML</code></td><td>内部完整的 HTML 字符串</td><td>会</td><td>中等</td></tr></tbody></table></div><p>日常读文字用 <code>textContent</code>，不要用 <code>innerText</code>，后者受 CSS 影响，同一段代码在不同布局下结果可能不同。</p><h3>innerHTML 与 XSS</h3><p>这个区别不只是显示效果，还是安全问题。假设页面上有个评论区，你把用户输入直接塞进 <code>innerHTML</code>：</p><pre><code class="lang-js"><span class="tok-k">const</span> userInput = <span class="tok-s">'&lt;img src=&quot;x&quot; onerror=&quot;alert(document.cookie)&quot;&gt;'</span>;
+box.innerHTML = <span class="tok-s">`&lt;p&gt;${userInput}&lt;/p&gt;`</span>;
+<span class="tok-c">// 图片加载失败，onerror 里的代码被执行</span></code></pre><p>用户提交的不是文字，而是一段 HTML。浏览器解析到 <code>img</code>，去加载一个不存在的图片，加载失败触发 <code>onerror</code>，里面的 JS 就被执行了。这段代码能读 cookie、发请求、改页面内容，甚至冒充用户操作。</p><p>这类攻击叫 XSS（Cross-Site Scripting，跨站脚本）。最容易被忽略的是：攻击代码不一定来自「恶意用户」，也可能来自别人分享的一条链接参数、第三方接口返回的某个字段。你信任数据来源，但数据在传输途中可能已经被换掉了。</p><p>记住一条底线：**任何不是你自己写死的内容，都不要进 <code>innerHTML</code>**。用户输入、URL 参数、接口返回，统统用 <code>textContent</code>。</p><p>如果确实要渲染富文本，比如后台编辑的文章，必须用专门的清洗库，例如 DOMPurify，先过滤再插入。自己写正则过滤 HTML 基本防不住，攻击者有一百种绕过方式。</p><p><code>innerHTML</code> 还有一个副作用：赋值会<strong>销毁原有的所有子节点</strong>，绑在子节点上的事件监听也一起没了。第 18 章做待办清单时，这就是「重新渲染后按钮点不动」的根本原因。</p><h2>属性、data-* 与 classList</h2><p>文本之外，元素上还有属性。HTML 里写的 <code>href</code>、<code>src</code>、<code>disabled</code>，在 DOM 里都能读写。</p><pre><code class="lang-html">&lt;a id=&quot;link&quot; href=&quot;/home&quot; data-user-id=&quot;42&quot; class=&quot;btn primary&quot;&gt;首页&lt;/a&gt;</code></pre><pre><code class="lang-js"><span class="tok-k">const</span> link = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#link'</span>);
+
+link.<span class="tok-f">getAttribute</span>(<span class="tok-s">'href'</span>);          <span class="tok-c">// 输出: '/home'</span>
+link.<span class="tok-f">setAttribute</span>(<span class="tok-s">'href'</span>, <span class="tok-s">'/about'</span>);
+link.<span class="tok-f">removeAttribute</span>(<span class="tok-s">'href'</span>);
+link.<span class="tok-f">hasAttribute</span>(<span class="tok-s">'data-user-id'</span>);  <span class="tok-c">// 输出: true</span>
+
+link.dataset.userId;                <span class="tok-c">// 输出: '42'（字符串）</span>
+link.dataset.userId = <span class="tok-s">'99'</span>;         <span class="tok-c">// 写回 data-user-id=&quot;99&quot;</span>
+
+link.classList.<span class="tok-f">add</span>(<span class="tok-s">'active'</span>);
+link.classList.<span class="tok-f">remove</span>(<span class="tok-s">'primary'</span>);
+link.classList.<span class="tok-f">toggle</span>(<span class="tok-s">'active'</span>);    <span class="tok-c">// 没有就加，有就删</span>
+link.classList.<span class="tok-f">contains</span>(<span class="tok-s">'active'</span>);  <span class="tok-c">// 输出: false（刚被 toggle 删掉）</span>
+
+<span class="tok-k">const</span> input = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#nickname'</span>);
+input.<span class="tok-f">getAttribute</span>(<span class="tok-s">'value'</span>);        <span class="tok-c">// 输出: '小明'（HTML 上写的初始值）</span>
+input.value;                        <span class="tok-c">// 用户改成「小红」后是 '小红'</span></code></pre><p><code>getAttribute</code> 返回字符串或 <code>null</code>；<code>setAttribute</code> 会把值转成字符串；<code>removeAttribute</code> 删掉整个属性。</p><p><code>data-*</code> 是 HTML 允许你自定义的属性，专门用来携带数据。<code>data-user-id</code> 在 JS 里通过 <code>dataset.userId</code> 访问：去掉 <code>data-</code>，剩下的中划线转成驼峰。所有值都是字符串，要当数字用得自己转。反过来，<code>dataset.userId = '99'</code> 会写回 <code>data-user-id=&quot;99&quot;</code>。属性名在 HTML 里会被转小写，所以别写 <code>data-userId</code>。</p><h3>attribute 与 property 不是一回事</h3><p><code>getAttribute('value')</code> 读的是 HTML 上写的初始值，<code>input.value</code> 读的是当前状态。用户打字改变的是 property，attribute 一直没动。表单相关的状态一律用 property，比如 <code>value</code>、<code>checked</code>、<code>selected</code>。</p><p>同理，<code>a.href</code> 返回浏览器补全后的绝对地址，<code>a.getAttribute('href')</code> 返回你写的那串相对路径。调试时看到两个不一样，不用怀疑自己。</p><h3>classList</h3><p><code>classList</code> 是操作 class 的标准方式。<code>toggle</code> 最常用：有就删，没有就加，一行实现开关。第二个参数可以强制方向：<code>toggle('active', true)</code> 一定加上，<code>false</code> 一定删掉。</p><p>不要用 <code>className = 'active'</code>，它会把原来的 class 全冲掉，<code>btn primary</code> 变成 <code>active</code>，样式直接崩。也不要 <code>classList.add('a b')</code>，一个字符串里带空格会直接报错，要分成两次 add。</p><h2>样式：style 与切换 class</h2><pre><code class="lang-js"><span class="tok-k">const</span> card = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'.card'</span>);
+
+card.style.display = <span class="tok-s">'none'</span>;
+card.style.backgroundColor = <span class="tok-s">'red'</span>;             <span class="tok-c">// CSS 的 background-color 转驼峰</span>
+card.style.<span class="tok-f">setProperty</span>(<span class="tok-s">'--main-color'</span>, <span class="tok-s">'#0af'</span>); <span class="tok-c">// 自定义属性用 setProperty</span>
+
+card.style.display;                  <span class="tok-c">// ''，没有内联样式时是空字符串</span>
+<span class="tok-f">getComputedStyle</span>(card).display;      <span class="tok-c">// 'block'，最终生效的值</span></code></pre><p><code>el.style.xxx</code> 对应内联样式。CSS 里的 <code>background-color</code> 在 JS 里要写成驼峰 <code>backgroundColor</code>，因为属性名里不能有中划线。</p><p>读 <code>el.style.display</code> 只能读到内联样式，读不到 CSS 文件里定义的。想知道元素最终生效的样式，要用 <code>getComputedStyle(el)</code>。</p><h3>优先切 class</h3><p>同样一个高亮效果，两种写法：</p><pre><code class="lang-css">.card {
+  padding: 16px;
+  border: 1px solid #ddd;
+}
+
+.card.is-active {
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 2px #cfe4ff;
+}</code></pre><p>JS 只写一行 <code>card.classList.toggle('is-active')</code>，样式全交给 CSS。好处有三个：样式集中写在 CSS 里，改一处全站生效；可以用 <code>:hover</code>、媒体查询、过渡动画；不会因为内联样式优先级过高而难以覆盖。</p><p>什么时候用 inline style？只有值在运行时才算得出来的时候，比如进度条宽度 <code>percent + '%'</code>、拖拽元素的位置。即便如此，也优先写 CSS 变量，用 <code>style.setProperty('--progress', value)</code> 传值，让 CSS 决定怎么用。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>内联样式的优先级高于普通 CSS 选择器。你调试时发现「CSS 里改了没用」，先看 Elements 面板里这个元素是不是带着 <code>style=&quot;...&quot;</code>。</p></div><h2>创建、插入与删除节点</h2><p>页面不能只有写死的结构。用户添加一条待办，就得在 DOM 里真的创建一个节点。</p><pre><code class="lang-js"><span class="tok-k">const</span> li = document.<span class="tok-f">createElement</span>(<span class="tok-s">'li'</span>);
+li.className = <span class="tok-s">'item'</span>;
+li.textContent = <span class="tok-s">'新项目'</span>;
+
+<span class="tok-k">const</span> list = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#list'</span>);
+
+list.<span class="tok-f">append</span>(li);         <span class="tok-c">// 加到末尾，可一次传多个节点或字符串</span>
+list.<span class="tok-f">prepend</span>(li);        <span class="tok-c">// 移到开头（同一个节点是移动，不是复制）</span>
+
+li.<span class="tok-f">before</span>(<span class="tok-s">'前面的文字'</span>);  <span class="tok-c">// 插到 li 前面</span>
+li.<span class="tok-f">after</span>(<span class="tok-s">'后面的文字'</span>);   <span class="tok-c">// 插到 li 后面</span>
+li.<span class="tok-f">remove</span>();             <span class="tok-c">// 从页面移除自己，不需要父元素</span>
+
+<span class="tok-c">// 批量拼一个列表：先全部放进 fragment，再一次性插入</span>
+<span class="tok-k">const</span> todos = [<span class="tok-s">'买牛奶'</span>, <span class="tok-s">'写作业'</span>, <span class="tok-s">'跑步'</span>];
+list.innerHTML = <span class="tok-s">''</span>;
+
+<span class="tok-k">const</span> fragment = document.<span class="tok-f">createDocumentFragment</span>();
+
+<span class="tok-k">for</span> (<span class="tok-k">const</span> text <span class="tok-k">of</span> todos) {
+  <span class="tok-k">const</span> item = document.<span class="tok-f">createElement</span>(<span class="tok-s">'li'</span>);
+  item.className = <span class="tok-s">'item'</span>;
+  item.textContent = text;
+  fragment.<span class="tok-f">append</span>(item);
+}
+
+list.<span class="tok-f">append</span>(fragment);   <span class="tok-c">// 只插入一次，只触发一次布局计算</span></code></pre><p><code>append</code> 和 <code>prepend</code> 接受节点，也接受字符串；<code>appendChild</code> 只接受节点，返回被插入的节点。日常用 <code>append</code> 更顺手。<code>before</code> 和 <code>after</code> 则是在某个元素的前后插入兄弟节点。</p><p>有一个容易误解的行为：把一个已经存在于页面上的节点 append 到别处，是<strong>移动</strong>，不是复制。想复制用 <code>cloneNode(true)</code>，参数 <code>true</code> 表示连子节点一起复制。</p><h3>用 fragment 批量插入</h3><p>每次往正在显示的 DOM 里插入节点，浏览器都可能重新计算布局（reflow）。三条数据无所谓，三百条就能感觉到卡。</p><p><code>DocumentFragment</code> 是一个不在页面上的临时容器。先用 <code>document.createDocumentFragment()</code> 创建它，循环里把节点 append 进去，最后一次性 append 到页面，就只触发一次布局。上面代码的后半段就是这个做法。</p><p>另一种常见写法是拼 HTML 字符串再赋给 <code>innerHTML</code>，代码更短、速度也快，但只要数据里有用户输入就有 XSS 风险。安全和省事之间，先选安全：<code>createElement</code> + <code>textContent</code>。</p><h2>事件：让页面响应</h2><p>页面能改还不够，要能响应操作。事件就是「发生了什么事」的通知：点击、输入、提交、滚动、按键。</p><pre><code class="lang-html">&lt;button id=&quot;save&quot;&gt;&lt;span&gt;保存&lt;/span&gt;&lt;/button&gt;</code></pre><pre><code class="lang-js"><span class="tok-k">const</span> btn = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#save'</span>);
+
+btn.<span class="tok-f">addEventListener</span>(<span class="tok-s">'click'</span>, (e) =&gt; {
+  console.<span class="tok-f">log</span>(e.type);           <span class="tok-c">// 输出: click</span>
+  console.<span class="tok-f">log</span>(e.target.tagName); <span class="tok-c">// 点文字时输出: SPAN</span>
+  console.<span class="tok-f">log</span>(e.currentTarget.id); <span class="tok-c">// 输出: save</span>
+});
+
+document.<span class="tok-f">addEventListener</span>(<span class="tok-s">'keydown'</span>, (e) =&gt; {
+  console.<span class="tok-f">log</span>(e.key);            <span class="tok-c">// 按 Esc 时输出: Escape</span>
+  <span class="tok-k">if</span> (e.key === <span class="tok-s">'Escape'</span>) btn.<span class="tok-f">blur</span>();
+});</code></pre><p>绑事件有三种写法：HTML 里写 <code>onclick=&quot;...&quot;</code>、给 <code>el.onclick</code> 赋值、用 <code>addEventListener</code>。前两种都只能挂一个处理函数，后写的会覆盖前面的；<code>addEventListener</code> 可以挂多个，还能精确移除，所以统一用它。</p><p>事件触发时，浏览器会调用你的函数，并传一个事件对象。里面字段很多，先掌握四个：</p><div class="table-wrap"><table><thead><tr><th>字段 / 方法</th><th>含义</th></tr></thead><tbody><tr><td><code>e.target</code></td><td>实际被点中的元素，可能是个子元素</td></tr><tr><td><code>e.currentTarget</code></td><td>监听器绑在谁身上，也就是 <code>addEventListener</code> 的调用者</td></tr><tr><td><code>e.key</code></td><td>键盘事件里按下的键，如 <code>'Enter'</code>、<code>'Escape'</code>、<code>'a'</code></td></tr><tr><td><code>e.preventDefault()</code></td><td>取消浏览器对该事件的默认动作</td></tr></tbody></table></div><p><code>target</code> 和 <code>currentTarget</code> 只有在「监听器绑在父元素、点在子元素」时才不同。点按钮上的文字，<code>target</code> 是 <code>span</code>，<code>currentTarget</code> 永远是 <code>button</code>。写事件委托时全靠这个区别。</p><p><code>key</code> 用于键盘事件。判断回车不要用 <code>keyCode</code>，那是老写法，用 <code>e.key === 'Enter'</code>。</p><p><code>preventDefault()</code> 取消默认动作：链接跳转、表单提交刷新、右键菜单、复选框勾选。注意它只取消「浏览器本来要做的事」，不影响你自己的代码。</p><p>移除监听要用同一个函数引用。先用 <code>function</code> 或具名变量定义 <code>onClick</code>，再 <code>addEventListener('click', onClick)</code>，之后 <code>removeEventListener('click', onClick)</code> 才有效。换成两个匿名函数就删不掉，因为每次都是新的函数对象。</p><p>只想触发一次，不用手动移除，加 <code>{ once: true }</code> 就行。</p><h2>冒泡、捕获与两个「阻止」</h2><p>事件不是只在目标元素上跑一遍。它先从最外层一路传到目标，再从目标一路传回最外层：</p><pre><code class="lang-text">点击 button 时的传播路径：
+
+捕获：window → document → body → div → button
+目标：button 上的监听器
+冒泡：button → div → body → document → window</code></pre><p>默认 <code>addEventListener</code> 只监听冒泡阶段。同一段 HTML，三个监听器：</p><pre><code class="lang-js"><span class="tok-k">const</span> outer = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#outer'</span>);
+<span class="tok-k">const</span> inner = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#inner'</span>);
+
+outer.<span class="tok-f">addEventListener</span>(<span class="tok-s">'click'</span>, () =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'outer 捕获'</span>), <span class="tok-k">true</span>);
+inner.<span class="tok-f">addEventListener</span>(<span class="tok-s">'click'</span>, () =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'inner'</span>));
+outer.<span class="tok-f">addEventListener</span>(<span class="tok-s">'click'</span>, () =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'outer 冒泡'</span>));
+
+<span class="tok-c">// 点击按钮，输出顺序：</span>
+<span class="tok-c">// outer 捕获</span>
+<span class="tok-c">// inner</span>
+<span class="tok-c">// outer 冒泡</span></code></pre><p>第三个参数传 <code>true</code>，或者传 <code>{ capture: true }</code>，就在捕获阶段触发。实际开发里捕获用得少，主要用在「我要在子元素之前拦下这个事件」的场景。理解它主要是为了看懂事件顺序，以及在别人的代码里看到 <code>true</code> 时不懵。</p><h3>stopPropagation 与 preventDefault</h3><p>这两个方法经常被混，其实管的是两件不同的事：</p><div class="table-wrap"><table><thead><tr><th>方法</th><th>阻止什么</th><th>不影响什么</th></tr></thead><tbody><tr><td><code>e.stopPropagation()</code></td><td>事件继续传给祖先元素</td><td>浏览器的默认行为照常发生</td></tr><tr><td><code>e.preventDefault()</code></td><td>浏览器对该事件的默认行为</td><td>事件仍然继续冒泡</td></tr></tbody></table></div><p>一个链接放在 div 里，点它时：只调 <code>stopPropagation</code>，链接照样跳转；只调 <code>preventDefault</code>，div 的监听照样收到。两个都要拦，就两个都调。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>不要习惯性地在每个 handler 结尾写 <code>stopPropagation</code>。它会让父级的事件委托、埋点统计、全局快捷键全部失效，而且出问题时很难查到源头。多数时候你要的是「在 handler 里加一个条件判断」，不是把事件掐断。</p></div><h2>事件委托：一个监听器管所有行</h2><p>列表里有删除按钮，最直接的做法是用 <code>querySelectorAll('.delete')</code> 查出所有按钮，再用 <code>forEach</code> 一个个 <code>addEventListener</code>。</p><p>三个问题：第一，新加的行没有监听器，删不掉；第二，一百行就是一百个监听器，占内存；第三，每次重新渲染列表，旧节点被销毁，监听器也跟着没了。</p><p>事件委托（event delegation）把监听器绑在父元素上，利用冒泡统一处理：</p><pre><code class="lang-html">&lt;ul id=&quot;todo-list&quot;&gt;
+  &lt;li data-id=&quot;1&quot;&gt;买牛奶 &lt;button class=&quot;delete&quot;&gt;删除&lt;/button&gt;&lt;/li&gt;
+  &lt;li data-id=&quot;2&quot;&gt;写作业 &lt;button class=&quot;delete&quot;&gt;删除&lt;/button&gt;&lt;/li&gt;
+&lt;/ul&gt;</code></pre><pre><code class="lang-js"><span class="tok-k">const</span> list = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#todo-list'</span>);
+
+list.<span class="tok-f">addEventListener</span>(<span class="tok-s">'click'</span>, (e) =&gt; {
+  <span class="tok-k">const</span> btn = e.target.<span class="tok-f">closest</span>(<span class="tok-s">'.delete'</span>);
+  <span class="tok-k">if</span> (!btn) <span class="tok-k">return</span>;                 <span class="tok-c">// 点的不是删除按钮，忽略</span>
+
+  <span class="tok-k">const</span> li = btn.<span class="tok-f">closest</span>(<span class="tok-s">'li'</span>);
+  <span class="tok-k">const</span> id = li.dataset.id;
+  li.<span class="tok-f">remove</span>();
+  console.<span class="tok-f">log</span>(<span class="tok-s">'删除'</span>, id);
+});</code></pre><p>点击删除按钮，事件冒泡到 <code>ul</code>，父元素上的监听器被触发。<code>closest('.delete')</code> 从 <code>e.target</code> 自己开始往上找最近的匹配元素，找到就返回，找不到返回 <code>null</code>。所以点在按钮内部的图标、文字上也能找到按钮，比判断 <code>tagName === 'BUTTON'</code> 可靠得多。</p><p><code>if (!btn) return</code> 这一行不能省。用户点在 li 的空白处，事件同样会冒泡上来，<code>closest</code> 返回 <code>null</code>，后面 <code>btn.dataset</code> 就会报错。</p><div class="table-wrap"><table><thead><tr><th>对比项</th><th>每个按钮单独绑定</th><th>事件委托</th></tr></thead><tbody><tr><td>新增的元素</td><td>要重新绑定才生效</td><td>自动生效</td></tr><tr><td>监听器数量</td><td>有多少按钮就多少个</td><td>父元素上只有一个</td></tr><tr><td>重新渲染列表</td><td>监听器随旧节点丢失</td><td>不受影响</td></tr><tr><td>代码位置</td><td>分散在每个创建按钮的地方</td><td>集中在一处</td></tr></tbody></table></div><p>委托的核心优势是「监听器与元素解耦」：不管列表以后加多少行、怎么重渲染，那一个监听器一直在父元素上，新行自动生效。第 18 章的待办清单就靠这个处理删除和勾选。</p><h2>表单</h2><pre><code class="lang-html">&lt;form id=&quot;login&quot;&gt;
+  &lt;input id=&quot;email&quot; name=&quot;email&quot; type=&quot;email&quot; placeholder=&quot;邮箱&quot;&gt;
+  &lt;input id=&quot;password&quot; name=&quot;password&quot; type=&quot;password&quot; placeholder=&quot;密码&quot;&gt;
+  &lt;button type=&quot;submit&quot;&gt;登录&lt;/button&gt;
+&lt;/form&gt;
+&lt;p id=&quot;hint&quot;&gt;&lt;/p&gt;</code></pre><pre><code class="lang-js"><span class="tok-k">const</span> form = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#login'</span>);
+<span class="tok-k">const</span> email = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#email'</span>);
+<span class="tok-k">const</span> hint = document.<span class="tok-f">querySelector</span>(<span class="tok-s">'#hint'</span>);
+
+form.<span class="tok-f">addEventListener</span>(<span class="tok-s">'submit'</span>, (e) =&gt; {
+  e.<span class="tok-f">preventDefault</span>();                 <span class="tok-c">// 阻止整页刷新</span>
+
+  <span class="tok-k">const</span> value = email.value.<span class="tok-f">trim</span>();
+  <span class="tok-k">if</span> (!value.<span class="tok-f">includes</span>(<span class="tok-s">'@'</span>)) {
+    hint.textContent = <span class="tok-s">'邮箱格式不对'</span>;
+    <span class="tok-k">return</span>;                           <span class="tok-c">// 提前结束，不提交</span>
+  }
+
+  console.<span class="tok-f">log</span>(<span class="tok-s">'提交'</span>, value);
+  form.<span class="tok-f">reset</span>();                       <span class="tok-c">// 清空表单</span>
+});</code></pre><p>表单的默认提交行为是「把数据发给当前地址，然后整页刷新」。在单页应用里，这意味着你辛苦维护的页面状态全部丢失。所以 submit 处理函数的第一行几乎总是 <code>e.preventDefault()</code>。</p><p><code>input.value</code> 永远是字符串。即使用户输入的是 <code>18</code>，拿到的也是 <code>'18'</code>。要计算就先 <code>Number()</code> 或 <code>parseFloat()</code>，这个坑第 2 章讲过。空输入框的值是空字符串 <code>''</code>，不是 <code>null</code>，判断「有没有填」用 <code>value.trim() === ''</code>。</p><div class="table-wrap"><table><thead><tr><th>事件</th><th>触发时机</th><th>适合做什么</th></tr></thead><tbody><tr><td><code>input</code></td><td>每次输入、粘贴、删除都触发</td><td>实时预览、字数统计、搜索联想</td></tr><tr><td><code>change</code></td><td>文本框值改变且失去焦点；下拉框和复选框一变就触发</td><td>表单校验、保存设置</td></tr><tr><td><code>blur</code></td><td>失去焦点</td><td>校验单个字段</td></tr><tr><td><code>submit</code></td><td>表单提交</td><td>收集数据、统一校验</td></tr></tbody></table></div><p>用 <code>input</code> 事件做实时统计很合适：给 <code>title</code> 绑一个 <code>input</code> 监听，处理函数里写 <code>counter.textContent = title.value.length + ' / 20'</code>，每敲一个字都会更新。复选框则用 <code>change</code> 加 <code>checked</code>，值只有 <code>true</code> 和 <code>false</code> 两种；<code>checkbox.value</code> 永远是 HTML 上写的字符串，通常还是 <code>'on'</code>，不能用它判断有没有勾选。</p><p>字段多的时候，一个个 querySelector 很啰嗦。给每个 input 加上 <code>name</code>，用 <code>new FormData(form)</code> 一次性收集，再 <code>Object.fromEntries</code> 转成普通对象。第 16 章提交接口时会再用到它。</p><h2>脚本放在哪：defer 与 DOMContentLoaded</h2><p>把 <code>script</code> 放在 <code>head</code> 里且不加 <code>defer</code>，浏览器解析到它时会立刻执行，此时下面的 <code>button</code> 还没被解析出来，<code>querySelector</code> 返回 <code>null</code>，下一行就报 <code>Cannot read properties of null</code>。</p><p>三种解法：把 script 放到 <code>&lt;/body&gt;</code> 前；给 script 加 <code>defer</code>；用 <code>DOMContentLoaded</code> 包起来。</p><pre><code class="lang-html">&lt;head&gt;
+  &lt;script src=&quot;app.js&quot; defer&gt;&lt;/script&gt;
+&lt;/head&gt;</code></pre><p><code>defer</code> 让脚本在后台下载，等 HTML 解析完再按顺序执行，执行时 DOM 一定齐了。这是现代项目最常用的写法。<code>async</code> 则是下载完立刻执行，不保证顺序，适合统计脚本这种独立、不依赖 DOM 的代码。</p><div class="table-wrap"><table><thead><tr><th>写法</th><th>执行时机</th><th>能拿到完整 DOM 吗</th><th>顺序</th></tr></thead><tbody><tr><td>head 里的普通 script</td><td>立即，阻塞解析</td><td>不能</td><td>按出现顺序</td></tr><tr><td>body 末尾的 script</td><td>解析到末尾时</td><td>能</td><td>按出现顺序</td></tr><tr><td><code>defer</code></td><td>HTML 解析完</td><td>能</td><td>按出现顺序</td></tr><tr><td><code>async</code></td><td>下载完就执行</td><td>不一定</td><td>不保证</td></tr></tbody></table></div><p>如果脚本没有 defer 又放在 head，就用事件等 DOM 就绪：<code>document.addEventListener('DOMContentLoaded', ...)</code>，回调里再查询元素。</p><p><code>DOMContentLoaded</code> 不等图片和样式，<code>load</code> 要等所有资源加载完，通常太晚。日常用 <code>defer</code> 就够了，<code>DOMContentLoaded</code> 主要出现在老项目和第三方脚本里。</p><h2>常见误区清单</h2><div class="table-wrap"><table><thead><tr><th>写法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td>选择器拼错后直接 <code>.textContent</code></td><td><code>Cannot read properties of null</code></td><td>没判断 <code>querySelector</code> 可能返回 null</td></tr><tr><td><code>querySelectorAll(...).map()</code></td><td><code>map is not a function</code></td><td>NodeList 不是数组，用 <code>Array.from</code> 转</td></tr><tr><td><code>el.innerHTML = 用户输入</code></td><td>可能执行任意脚本</td><td>XSS，用户输入一律用 <code>textContent</code></td></tr><tr><td><code>el.className = 'active'</code></td><td>原有 class 全丢</td><td>用 <code>classList.add/remove/toggle</code></td></tr><tr><td><code>el.style.display</code> 读 CSS 类里的值</td><td>得到空字符串</td><td>只能读内联样式，用 <code>getComputedStyle</code></td></tr><tr><td>表单 submit 不 <code>preventDefault</code></td><td>页面刷新，状态全丢</td><td>默认提交会导航到新地址</td></tr><tr><td>给每个删除按钮单独绑事件</td><td>新增的行删不掉</td><td>新节点没有监听器，用事件委托</td></tr><tr><td>把 <code>e.target</code> 直接当按钮用</td><td>点到内部文字就出错</td><td>用 <code>e.target.closest('button')</code></td></tr><tr><td>script 放 head 直接查元素</td><td>拿到 null</td><td>元素还没解析，用 <code>defer</code> 或放 body 末尾</td></tr><tr><td><code>addEventListener('click', fn())</code></td><td>事件没绑上，函数立刻执行</td><td>传的是调用结果，不是函数本身</td></tr><tr><td>用匿名函数 <code>removeEventListener</code></td><td>移除无效</td><td>两次是不同函数，要传同一个引用</td></tr><tr><td>用 <code>innerHTML</code> 重渲染列表</td><td>按钮点不动了</td><td>子节点被销毁，监听器一起没了</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>下面这行执行后，页面上显示什么？</summary><div class="quiz-body"><p><code>box.textContent = '&lt;b&gt;粗体&lt;/b&gt;';</code></p></div></details><details class="quiz"><summary>点击内层按钮，下面三个监听器的输出顺序是什么？</summary><div class="quiz-body"><p>父元素先注册一个捕获监听（第三参数 <code>true</code>），再注册一个冒泡监听；子元素注册一个冒泡监听。</p></div></details><details class="quiz"><summary>点击按钮里的 <code>&lt;span&gt;</code> 时，<code>e.target</code> 和 <code>e.currentTarget</code> 分别是什么？</summary><div class="quiz-body"><p><code>e.target</code> 是那个 <code>span</code>，<code>e.currentTarget</code> 是绑定监听器的 <code>button</code>。<code>target</code> 跟着实际点中的元素变，<code>currentTarget</code> 始终是 <code>addEventListener</code> 的调用者，所以委托里要用 <code>closest</code> 往上找。</p></div></details><details class="quiz"><summary><code>document.querySelectorAll('.item')</code> 的结果能直接 <code>.map()</code> 吗？</summary><div class="quiz-body"><p>不能，会报 <code>map is not a function</code>。它返回的是 NodeList，只有 <code>length</code>、下标和 <code>forEach</code>。先 <code>Array.from(...)</code> 或 <code>[...nodeList]</code> 转成数组，再用数组方法。</p></div></details><details class="quiz"><summary>对同一个元素连续调用两次 <code>classList.toggle('active')</code>，最后 class 是什么状态？</summary><div class="quiz-body"><p>回到初始状态。第一次没有就加上，第二次有就删掉。<code>toggle</code> 是开关，不是「只加不删」；想强制加用 <code>toggle('active', true)</code>。</p></div></details><details class="quiz"><summary><code>stopPropagation</code> 和 <code>preventDefault</code> 分别阻止什么？</summary><div class="quiz-body"><p>前者阻止事件继续冒泡到祖先元素，后者阻止浏览器对该事件的默认行为（链接跳转、表单提交）。两者互不影响，需要同时阻止就两个都调用。</p></div></details><details class="quiz"><summary>为什么事件委托对「后来新增的列表项」也有效？</summary><div class="quiz-body"><p>监听器绑在父元素上，新增的项点击后事件照样冒泡到父元素，父元素用 <code>e.target.closest()</code> 找到具体元素再处理。所以不需要给新元素补绑监听器。</p></div></details><details class="quiz"><summary>页面报 <code>Cannot read properties of null (reading 'addEventListener')</code>，最可能的原因是什么？</summary><div class="quiz-body"><p><code>querySelector</code> 没找到元素。常见原因是选择器写错、脚本在元素解析前执行、或者元素根本不在当前页面。先打印选择器结果确认，再检查 script 位置和 <code>defer</code>。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>做一个「添加 + 删除」的最小列表：一个输入框、一个添加按钮、一个 <code>ul</code>。点添加把输入内容作为新 <code>li</code> 加到末尾，点任意 <code>li</code> 里的删除按钮把它删掉，删除必须用事件委托。 验收：连续添加 5 条都能删；手动在控制台往 <code>ul</code> 里插一个新 <code>li</code>，它的删除按钮也能用；输入为空时不会添加空行。</li></ol><ol><li>做一个实时搜索框：页面上放 10 个商品名，输入关键词时只显示包含关键词的项，清空输入恢复全部。 验收：输入「书」只剩含「书」的项；大小写不敏感；用 <code>input</code> 事件而不是 <code>change</code>；过滤时不要重建整个列表，用 <code>hidden</code> 属性或 <code>classList</code> 控制显隐。</li></ol><ol><li>做一个注册表单，包含邮箱、密码、确认密码三个字段。提交时阻止默认刷新，校验邮箱含 <code>@</code>、密码至少 6 位、两次密码一致，错误信息显示在对应输入框下方。 验收：三种错误分别能触发；错误提示用 <code>textContent</code> 写入；全部通过后打印收集到的对象并清空表单。</li></ol><p><strong>进阶</strong></p><ol><li>用 <code>document.createElement</code> + <code>DocumentFragment</code> 渲染 1000 条数据，再用 <code>console.time</code> / <code>console.timeEnd</code> 对比「拼 HTML 字符串一次 innerHTML」的耗时。两种方式各跑三次，记录结果。 验收：能说出两种方式各自快慢的原因；能解释为什么字符串方式在数据来自用户时有风险。</li></ol><ol><li>做一个可折叠卡片列表：点卡片标题展开/收起内容，点卡片里的「删除」按钮只删除卡片、不触发折叠。整个列表只用一个点击监听器。 验收：折叠和删除互不干扰；新增卡片自动具备两种行为；删除时不依赖按钮在 DOM 里的层级，用 <code>closest</code> 找卡片。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>这一章的两个错误会反复出现在你后面的项目里：<code>null</code> 上读属性，以及 <code>e.target</code> 不是你以为的元素。写完任何一段 DOM 代码，先问自己两句：这个选择器一定选得到吗？用户可能点到哪个子元素？</p><p>下一章给页面加上记忆和网络：用 <code>localStorage</code> 存住数据，用 <code>fetch</code> 从服务器取数据。第 17 章会教你在这些代码出错时怎么快速定位，第 18 章则把这三章合成一个能用的待办清单。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="14.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="16.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"15","title":"DOM 与事件"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

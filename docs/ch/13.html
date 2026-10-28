@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>异步：回调、Promise、async/await · JS 通勤课</title>
+<meta name="description" content="从单线程为什么会被卡住讲起，用事件循环、Promise 三种状态和 async/await 把「等」这件事彻底说清。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">异步：回调、Promise、async/await</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 13 章 · 约 38 分钟</div>
+    <h1>异步：回调、Promise、async/await</h1>
+    <p class="lede">从单线程为什么会被卡住讲起，用事件循环、Promise 三种状态和 async/await 把「等」这件事彻底说清。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>前端所有「等」的操作都是异步：等接口返回、等定时器到点、等用户点按钮。这一章决定你能不能写出不卡顿的页面。</p><p>前面十二章的代码都是「从上往下立刻执行完」。这一章要引入一个新的时间维度：有些代码现在开始，过一会儿才结束。</p><p>学完你能看懂面试里最常见的那道输出顺序题，能写出正确的 Promise 链，也知道什么时候该用 <code>Promise.all</code>、什么时候必须串行。第 16 章的 <code>fetch</code> 会直接建立在这一章之上。</p></blockquote><h2>为什么需要它</h2><p>JS 是<strong>单线程（single thread）</strong> 的：同一时刻只能执行一件事。这不是缺陷，而是设计选择——单线程不用处理多线程的锁和竞态，写起来简单。但它带来一个必须面对的问题：<strong>任何耗时的操作，都会把整个页面卡住</strong>。</p><p>先看一个极端的例子。假设你要「等 3 秒」，最直接的想法是写一个循环：</p><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-s">'1 开始请求'</span>);
+
+<span class="tok-k">const</span> start = Date.<span class="tok-f">now</span>();
+<span class="tok-k">while</span> (Date.<span class="tok-f">now</span>() - start &lt; <span class="tok-n">3000</span>) {
+  <span class="tok-c">// 空转 3 秒，模拟一个耗时操作</span>
+}
+
+console.<span class="tok-f">log</span>(<span class="tok-s">'2 数据到了'</span>);</code></pre><p>输出是 <code>1 开始请求</code>，三秒后 <code>2 数据到了</code>。看起来没问题，但在这三秒里，主线程一直在跑那个 <code>while</code>，它没空做任何别的事：你点按钮没反应，滚动页面不动，输入框打不出字，浏览器甚至会弹出「页面无响应」。</p><p>这就是<strong>同步阻塞</strong>。耗时操作不结束，后面的代码一行都执行不了。</p><p>真实的网络请求不由你控制，可能 100 毫秒，也可能 10 秒。你不可能让页面陪着等。所以 JS 的做法是：把「等」这件事交给浏览器（或 Node）的后台能力，主线程先继续往下跑，等结果回来了再通知你。</p><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-s">'1 开始请求'</span>);
+
+<span class="tok-f">setTimeout</span>(() =&gt; {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'2 数据到了'</span>);
+}, <span class="tok-n">3000</span>);
+
+console.<span class="tok-f">log</span>(<span class="tok-s">'3 我可以先干别的'</span>);</code></pre><p>这次的输出顺序是：</p><pre><code class="lang-text">1 开始请求
+3 我可以先干别的
+2 数据到了        ← 约 3 秒后</code></pre><p><code>setTimeout</code> 把回调函数交给计时器，自己立刻返回，主线程继续执行 <code>console.log('3 ...')</code>。三秒后计时器到点，把回调放进队列，主线程空了才去执行它。</p><p>这套机制叫<strong>异步（asynchronous）</strong>。它的核心不是「同时做多件事」，而是「不等着，先做别的，结果回来再处理」。</p><h2>同步与异步的执行顺序</h2><p>初学者最容易凭直觉判断顺序，然后出错。看这段：</p><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-s">'A'</span>);
+
+<span class="tok-f">setTimeout</span>(() =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'B'</span>), <span class="tok-n">0</span>);
+
+console.<span class="tok-f">log</span>(<span class="tok-s">'C'</span>);
+
+<span class="tok-c">// 输出: A C B</span></code></pre><p>很多人以为 <code>0</code> 毫秒就是「立刻」，应该输出 <code>A B C</code>。实际是 <code>A C B</code>。</p><p>原因：<code>setTimeout</code> 的第二个参数是「至少等多久」，不是「多久之后立刻插队执行」。哪怕写 0，回调也只是被放进<strong>任务队列</strong>，必须等当前这段同步代码全部跑完、主线程空了，才有机会执行。</p><p>所以判断顺序的第一条规则是：<strong>同步代码永远先跑完，异步回调排在后面</strong>。</p><p>那异步回调之间谁先谁后？这就涉及事件循环。</p><h2>事件循环：宏任务与微任务</h2><p>先把三个概念摆出来：</p><ul><li><strong>调用栈（call stack）</strong>：当前正在执行的函数。JS 一次只执行栈顶那一个。</li><li><strong>宏任务队列（macrotask queue）</strong>：<code>setTimeout</code>、<code>setInterval</code>、I/O、用户事件回调都排在这里。</li><li><strong>微任务队列（microtask queue）</strong>：<code>Promise.then</code>、<code>queueMicrotask</code> 排在这里。</li></ul><p>规则只有一条，但要理解透：<strong>每执行完一个宏任务，就把微任务队列整个清空，然后才取下一个宏任务</strong>。注意是「清空」，不是「取一个」。</p><p>事件循环（event loop）就是不断重复这个过程：取宏任务 → 执行 → 清空微任务 → 再取下一个。</p><p>看一道完整的题。建议你先把答案写在纸上，再往下看：</p><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-s">'1'</span>);
+
+<span class="tok-f">setTimeout</span>(() =&gt; {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'2'</span>);
+  Promise.<span class="tok-f">resolve</span>().<span class="tok-f">then</span>(() =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'3'</span>));
+}, <span class="tok-n">0</span>);
+
+Promise.<span class="tok-f">resolve</span>()
+  .<span class="tok-f">then</span>(() =&gt; {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'4'</span>);
+    <span class="tok-f">setTimeout</span>(() =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'5'</span>), <span class="tok-n">0</span>);
+  })
+  .<span class="tok-f">then</span>(() =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'6'</span>));
+
+console.<span class="tok-f">log</span>(<span class="tok-s">'7'</span>);</code></pre><p>输出是：</p><pre><code class="lang-text">1
+7
+4
+6
+2
+3
+5</code></pre><p>逐条推演：</p><ol><li>主线程同步执行：打印 <code>1</code>；登记一个 <code>setTimeout</code> 回调（宏任务）；<code>Promise.resolve().then(A)</code> 把回调 A 放进微任务队列；打印 <code>7</code>。此刻输出 <code>1 7</code>。</li><li>同步代码结束，开始清空微任务：执行 A，打印 <code>4</code>，同时把 <code>setTimeout(() =&gt; console.log('5'))</code> 登记成宏任务。A 返回 <code>undefined</code>，链上的下一个 <code>then(B)</code> 被加入微任务队列。</li><li>微任务队列还没空，继续执行 B，打印 <code>6</code>。这一步很关键：<strong>同一个微任务批次里新加的微任务也要一起清掉</strong>。</li><li>微任务清空，取第一个宏任务（最开始那个 <code>setTimeout</code>）：打印 <code>2</code>，并把 <code>Promise.then(() =&gt; console.log('3'))</code> 加入微任务队列。</li><li>这个宏任务结束，再次清空微任务：打印 <code>3</code>。</li><li>取下一个宏任务（A 里登记的那个）：打印 <code>5</code>。</li></ol><p>最终 <code>1 7 4 6 2 3 5</code>。</p><p>三个容易记错的地方：</p><ul><li><code>7</code> 在 <code>4</code> 前面，因为同步代码优先。</li><li><code>6</code> 在 <code>2</code> 前面，因为微任务要整批清空。</li><li><code>3</code> 在 <code>2</code> 后面，因为它是「宏任务里新产生的微任务」，要等这个宏任务执行完才轮到。</li></ul><div class="callout callout-warn"><span class="callout-label">注意</span><p><code>setTimeout(fn, 0)</code> 不代表 0 毫秒后立刻执行。浏览器对嵌套定时器有最小延迟限制，实际通常是 4 毫秒左右；更重要的是，它必须排队。所以用它做「立即执行」是错的，想要「本轮同步代码之后、下一轮宏任务之前」执行，用 <code>queueMicrotask</code> 或 <code>Promise.resolve().then</code>。</p></div><h2>回调函数与回调地狱</h2><p>在 Promise 出现之前，异步全靠<strong>回调函数（callback）</strong>：你把「结果回来之后要做什么」写成一个函数，传给那个异步操作。</p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">loadUser</span>(id, onSuccess) {
+  <span class="tok-f">setTimeout</span>(() =&gt; {
+    <span class="tok-f">onSuccess</span>({ id, name: <span class="tok-s">'小明'</span> });
+  }, <span class="tok-n">500</span>);
+}
+
+<span class="tok-f">loadUser</span>(<span class="tok-n">1</span>, (user) =&gt; {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'拿到用户:'</span>, user.name);
+});
+
+<span class="tok-c">// 0.5 秒后输出: 拿到用户: 小明</span></code></pre><p>这个写法本身没问题，Node 里至今大量使用。问题出在「一步依赖一步」的时候：</p><pre><code class="lang-js"><span class="tok-f">getUser</span>(<span class="tok-n">1</span>, (user) =&gt; {
+  <span class="tok-f">getOrders</span>(user.id, (orders) =&gt; {
+    <span class="tok-f">getOrderDetail</span>(orders[<span class="tok-n">0</span>].id, (detail) =&gt; {
+      <span class="tok-f">getComments</span>(detail.id, (comments) =&gt; {
+        <span class="tok-f">render</span>(comments);
+      });
+    });
+  });
+});</code></pre><p>这就是<strong>回调地狱（callback hell）</strong>。它有四个实际麻烦：</p><ul><li>每多一步就多一层缩进，五步之后代码已经贴到屏幕右边缘。</li><li>错误处理要在每一层单独写，漏一层就吞掉异常。</li><li>中间结果（<code>user</code>、<code>orders</code>）只能靠闭包带下去，想提前返回或跳出很难。</li><li>两步互不依赖的请求也没法并行，因为回调天然是串行的。</li></ul><p>Promise 就是为了解决这几个问题：把嵌套改成链式，把错误集中到 <code>catch</code>，把「等待」变成一个可以传递的值。</p><h2>Promise：把「等」变成一个对象</h2><p>Promise 是一个对象，代表「一个还没有结果、但将来会有结果的操作」。你可以把它想成一张取餐小票：现在给你一张纸，做好了你凭票来取。</p><h3>三种状态</h3><p>一个 Promise 只有三种状态：</p><ul><li><strong>pending（进行中）</strong>：还没有结果。</li><li><strong>fulfilled（已成功）</strong>：有了结果。</li><li><strong>rejected（已失败）</strong>：出错了。</li></ul><p>状态只能从 <code>pending</code> 变成 <code>fulfilled</code> 或 <code>rejected</code>，<strong>一旦变了就不可逆</strong>，也不会再变回去。这叫「已落定（settled）」。</p><pre><code class="lang-js"><span class="tok-k">const</span> p = <span class="tok-k">new</span> <span class="tok-f">Promise</span>((resolve, reject) =&gt; {
+  <span class="tok-f">setTimeout</span>(() =&gt; {
+    <span class="tok-k">const</span> ok = <span class="tok-k">true</span>;
+    <span class="tok-k">if</span> (ok) {
+      <span class="tok-f">resolve</span>(<span class="tok-s">'订单数据'</span>);
+    } <span class="tok-k">else</span> {
+      <span class="tok-f">reject</span>(<span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'请求失败'</span>));
+    }
+  }, <span class="tok-n">1000</span>);
+});
+
+p.<span class="tok-f">then</span>(data =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'成功:'</span>, data))
+ .<span class="tok-k">catch</span>(err =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'失败:'</span>, err.message))
+ .<span class="tok-k">finally</span>(() =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'结束'</span>));
+
+<span class="tok-c">// 1 秒后输出:</span>
+<span class="tok-c">// 成功: 订单数据</span>
+<span class="tok-c">// 结束</span></code></pre><p><code>resolve</code> 把状态改成 fulfilled，<code>reject</code> 改成 rejected。<code>then</code> 处理成功，<code>catch</code> 处理失败，<code>finally</code> 不管成败都执行（常用来关 loading）。</p><h3>executor 是同步执行的</h3><p><code>new Promise((resolve, reject) =&gt; { ... })</code> 里那个函数叫 <strong>executor（执行器）</strong>。它有一个非常关键的行为：<strong>立刻同步执行</strong>。</p><pre><code class="lang-js">console.<span class="tok-f">log</span>(<span class="tok-s">'1'</span>);
+
+<span class="tok-k">const</span> p = <span class="tok-k">new</span> <span class="tok-f">Promise</span>((resolve, reject) =&gt; {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'2'</span>);        <span class="tok-c">// executor 同步执行</span>
+  <span class="tok-f">resolve</span>(<span class="tok-s">'第一次'</span>);
+  <span class="tok-f">reject</span>(<span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'第二次'</span>));
+  <span class="tok-f">resolve</span>(<span class="tok-s">'第三次'</span>);
+});
+
+console.<span class="tok-f">log</span>(<span class="tok-s">'3'</span>);
+
+p.<span class="tok-f">then</span>(v =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'4'</span>, v));
+
+console.<span class="tok-f">log</span>(<span class="tok-s">'5'</span>);
+
+<span class="tok-c">// 输出: 1 2 3 5 4 第一次</span></code></pre><p>这段同时说明了两件事：</p><ul><li><code>2</code> 出现在 <code>3</code> 之前，说明 executor 是同步跑的，不是「过一会儿再跑」。</li><li>后面两次调用 <code>resolve</code> / <code>reject</code> 全部无效，<code>then</code> 只拿到第一次的 <code>'第一次'</code>。状态一旦落定，后面的调用被静默忽略——不报错，也不改变结果。</li></ul><p>很多初学者以为 <code>new Promise</code> 里的代码是异步的，于是写出「在 executor 里做耗时计算」的代码，结果照样阻塞页面。真正异步的是 <code>resolve</code> 之后回调的调度，不是 executor 本身。</p><h3>then、catch、finally</h3><p>上面那个例子里已经用到了三个方法。如果把 <code>resolve</code> 换成 <code>reject(new Error('接口 500'))</code>，<code>then</code> 就会被跳过，<code>catch</code> 打印错误，<code>finally</code> 照样执行。</p><p>三个方法的分工：</p><ul><li><code>then</code> 只接收成功的结果。前面是 rejected 时，它的回调被跳过。</li><li><code>catch</code> 接收错误。它等价于 <code>.then(undefined, onRejected)</code>，但语义更清楚。</li><li><code>finally</code> 不接收参数，成功失败都执行，适合清理工作。</li></ul><p>注意 <code>catch</code> 之后还可以继续 <code>.then</code>，因为 <code>catch</code> 也返回一个新的 Promise。错误被处理掉之后，链就恢复成 fulfilled 了。</p><h3>链式调用：返回值会传下去</h3><p><code>then</code> 永远返回一个<strong>新的 Promise</strong>。这个新 Promise 的状态由回调的返回值决定：</p><ul><li>返回普通值 → 新 Promise 变成 fulfilled，值是它。</li><li>返回 Promise → 等这个 Promise 落定，状态和值跟它一致。</li><li>抛出异常 → 新 Promise 变成 rejected。</li></ul><pre><code class="lang-js">Promise.<span class="tok-f">resolve</span>(<span class="tok-n">1</span>)
+  .<span class="tok-f">then</span>(v =&gt; {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'第一步'</span>, v);
+    <span class="tok-k">return</span> v + <span class="tok-n">1</span>;
+  })
+  .<span class="tok-f">then</span>(v =&gt; {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'第二步'</span>, v);
+    <span class="tok-k">return</span> <span class="tok-k">new</span> <span class="tok-f">Promise</span>(r =&gt; <span class="tok-f">setTimeout</span>(() =&gt; <span class="tok-f">r</span>(v + <span class="tok-n">1</span>), <span class="tok-n">100</span>));
+  })
+  .<span class="tok-f">then</span>(v =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'第三步'</span>, v));
+
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// 第一步 1</span>
+<span class="tok-c">// 第二步 2</span>
+<span class="tok-c">// 第三步 3</span></code></pre><p>每一步的 <code>return</code> 就是下一步的输入。没有 <code>return</code> 的话，下一个 <code>then</code> 拿到的是 <code>undefined</code>——这是 Promise 链里最常见的 bug。比如回调里写了 <code>v + 1</code> 却没写 <code>return</code>，下一步就只能拿到 <code>undefined</code>。</p><p>错误也会沿着链传下去，中间的 <code>then</code> 全被跳过：</p><pre><code class="lang-js">Promise.<span class="tok-f">resolve</span>(<span class="tok-n">1</span>)
+  .<span class="tok-f">then</span>(() =&gt; {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'这一步出错'</span>);
+  })
+  .<span class="tok-f">then</span>(() =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'被跳过'</span>))
+  .<span class="tok-k">catch</span>(err =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'接到:'</span>, err.message));
+
+<span class="tok-c">// 输出: 接到: 这一步出错</span></code></pre><p>所以链式写法的标准结构是：一串 <code>then</code>，最后跟一个 <code>catch</code>，需要的话再加 <code>finally</code>。<strong>不要在每个 then 里各写一个 catch</strong>，那会丢掉错误的传播能力。</p><h3>四个组合方法</h3><p>单个 Promise 好办，真实场景往往要同时处理多个。四个方法的分工必须分清：</p><pre><code class="lang-js"><span class="tok-k">const</span> ok = (value, ms) =&gt; <span class="tok-k">new</span> <span class="tok-f">Promise</span>(r =&gt; <span class="tok-f">setTimeout</span>(() =&gt; <span class="tok-f">r</span>(value), ms));
+<span class="tok-k">const</span> fail = (message, ms) =&gt; <span class="tok-k">new</span> <span class="tok-f">Promise</span>((_, reject) =&gt; <span class="tok-f">setTimeout</span>(() =&gt; <span class="tok-f">reject</span>(<span class="tok-k">new</span> <span class="tok-f">Error</span>(message)), ms));
+
+Promise.<span class="tok-f">all</span>([<span class="tok-f">ok</span>(<span class="tok-s">'用户'</span>, <span class="tok-n">100</span>), <span class="tok-f">ok</span>(<span class="tok-s">'订单'</span>, <span class="tok-n">50</span>)])
+  .<span class="tok-f">then</span>(([user, orders]) =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'全部成功:'</span>, user, orders));
+
+Promise.<span class="tok-f">all</span>([<span class="tok-f">ok</span>(<span class="tok-s">'用户'</span>, <span class="tok-n">100</span>), <span class="tok-f">fail</span>(<span class="tok-s">'订单接口挂了'</span>, <span class="tok-n">50</span>)])
+  .<span class="tok-k">catch</span>(err =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'整体失败:'</span>, err.message));
+
+<span class="tok-c">// 50 毫秒时输出: 整体失败: 订单接口挂了</span>
+<span class="tok-c">// 100 毫秒时输出: 全部成功: 用户 订单</span></code></pre><p><code>Promise.all</code> 等全部成功，结果数组的顺序<strong>和传入顺序一致</strong>，不是完成顺序。上面 <code>订单</code> 先回来，但结果里仍然是 <code>[用户, 订单]</code>。</p><p>第二个调用的特点是「一个失败就整体失败」：50 毫秒时第二个就失败了，整个 <code>all</code> 立刻变成 rejected，不再等第一个。这适合「这些数据都拿到才能渲染」的场景：缺一个就没法显示，早点失败早点报错。</p><p>如果每个结果都要，不管成败，用 <code>allSettled</code>：</p><pre><code class="lang-js">Promise.<span class="tok-f">allSettled</span>([<span class="tok-f">ok</span>(<span class="tok-s">'用户'</span>, <span class="tok-n">100</span>), <span class="tok-f">fail</span>(<span class="tok-s">'订单接口挂了'</span>, <span class="tok-n">50</span>)])
+  .<span class="tok-f">then</span>(results =&gt; {
+    results.<span class="tok-f">forEach</span>(r =&gt; {
+      console.<span class="tok-f">log</span>(r.status, r.status === <span class="tok-s">'fulfilled'</span> ? r.value : r.reason.message);
+    });
+  });
+
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// fulfilled 用户</span>
+<span class="tok-c">// rejected 订单接口挂了</span></code></pre><p><code>allSettled</code> <strong>永远不会失败</strong>，它等所有 Promise 都落定，返回一个数组，每项是 <code>{ status, value }</code> 或 <code>{ status, reason }</code>。适合「批量上传，各自显示成功失败」这种互不影响的场景。</p><p><code>race</code> 和 <code>any</code> 都是「谁先有结果用谁」，但一个看「落定」，一个只看「成功」。假设两个 Promise，一个 20 毫秒后失败，一个 100 毫秒后成功：<code>Promise.race</code> 会在 20 毫秒拿到失败，<code>Promise.any</code> 会忽略这次失败，等到 100 毫秒拿到成功。</p><p><code>race</code> 是第一个<strong>落定</strong>的说了算，成功或失败都算；<code>any</code> 会忽略失败，等第一个<strong>成功</strong>的。如果全部失败，<code>any</code> 抛一个 <code>AggregateError</code>，里面用 <code>.errors</code> 存放所有错误。</p><div class="table-wrap"><table><thead><tr><th>方法</th><th>什么时候成功</th><th>什么时候失败</th><th>典型用途</th></tr></thead><tbody><tr><td><code>Promise.all</code></td><td>全部成功</td><td>任意一个失败，立刻失败</td><td>首屏要多个接口都拿到才渲染</td></tr><tr><td><code>Promise.allSettled</code></td><td>永远成功，返回结果数组</td><td>不会失败</td><td>批量操作，各自展示成败</td></tr><tr><td><code>Promise.race</code></td><td>第一个落定的是成功</td><td>第一个落定的是失败</td><td>超时控制</td></tr><tr><td><code>Promise.any</code></td><td>第一个成功</td><td>全部失败</td><td>多个镜像源，取最快可用的</td></tr></tbody></table></div><h2>async / await</h2><p>Promise 链比回调好，但一串 <code>then</code> 读起来还是不像同步代码。<code>async/await</code> 是在 Promise 之上的一层语法糖，让异步代码写成同步的样子。</p><h3>async 函数一定返回 Promise</h3><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">getCount</span>() {
+  <span class="tok-k">return</span> <span class="tok-n">42</span>;
+}
+
+<span class="tok-k">const</span> result = <span class="tok-f">getCount</span>();
+
+console.<span class="tok-f">log</span>(result <span class="tok-k">instanceof</span> Promise);   <span class="tok-c">// 输出: true</span>
+result.<span class="tok-f">then</span>(v =&gt; console.<span class="tok-f">log</span>(v));          <span class="tok-c">// 输出: 42</span></code></pre><p>只要加了 <code>async</code>，函数的返回值就被自动包成 Promise。<code>return 42</code> 等于 <code>return Promise.resolve(42)</code>；抛出异常等于 <code>return Promise.reject(error)</code>。</p><p>这条规则意味着：<strong>调用 async 函数，拿到的永远是 Promise，不是结果本身</strong>。这一点在下一节的「忘记 await」里会变成一个坑。</p><h3>await 的本质：暂停函数，不暂停线程</h3><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">demo</span>() {
+  console.<span class="tok-f">log</span>(<span class="tok-s">'A'</span>);
+
+  <span class="tok-k">const</span> value = <span class="tok-k">await</span> Promise.<span class="tok-f">resolve</span>(<span class="tok-s">'B'</span>);
+
+  console.<span class="tok-f">log</span>(value);
+  console.<span class="tok-f">log</span>(<span class="tok-s">'C'</span>);
+}
+
+<span class="tok-f">demo</span>();
+console.<span class="tok-f">log</span>(<span class="tok-s">'D'</span>);
+
+<span class="tok-c">// 输出: A D B C</span></code></pre><p>执行过程：</p><ol><li>调用 <code>demo()</code>，同步执行到 <code>await</code>，打印 <code>A</code>。</li><li><code>await</code> 让<strong>这个函数</strong>暂停，把后面的代码注册成微任务，然后 <code>demo</code> 立刻返回一个 Promise。</li><li>主线程继续执行外面的 <code>console.log('D')</code>，打印 <code>D</code>。</li><li>微任务执行，<code>demo</code> 恢复，打印 <code>B</code>、<code>C</code>。</li></ol><p>关键理解：<code>await</code> 暂停的是<strong>函数</strong>，不是<strong>线程</strong>。主线程该干什么干什么，所以 <code>D</code> 会插到 <code>B</code> 前面。</p><p><code>await</code> 后面跟 Promise 时，等它落定并取出值；跟普通值时，也会异步恢复（仍然让出一次微任务），只是不用等。所以 <code>await 1</code> 后面的代码也不是立刻执行。</p><h3>用 try/catch 捕获错误</h3><p><code>await</code> 把 rejected 的 Promise 变成了「像抛出异常一样」的行为，所以可以用熟悉的 <code>try/catch</code>：</p><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">load</span>() {
+  <span class="tok-k">try</span> {
+    <span class="tok-k">const</span> data = <span class="tok-k">await</span> Promise.<span class="tok-f">reject</span>(<span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'网络断了'</span>));
+    console.<span class="tok-f">log</span>(<span class="tok-s">'不会走到这里'</span>, data);
+  } <span class="tok-k">catch</span> (err) {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'捕获:'</span>, err.message);
+  } <span class="tok-k">finally</span> {
+    console.<span class="tok-f">log</span>(<span class="tok-s">'收尾'</span>);
+  }
+}
+
+<span class="tok-f">load</span>();
+
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// 捕获: 网络断了</span>
+<span class="tok-c">// 收尾</span></code></pre><p>对比 Promise 链的 <code>.catch()</code>，<code>try/catch</code> 的好处是能覆盖整段逻辑：多个 <code>await</code> 中任何一个失败，都会跳到 <code>catch</code>，不用给每个都挂 <code>.catch</code>。</p><p>但要注意：<code>try/catch</code> 只能捕获 <code>await</code> 的错误。如果你调用了一个 async 函数却<strong>没有 await</strong>，它返回的 Promise 里的错误不会被这里捕获，会变成「未处理的 Promise 拒绝（unhandled rejection）」。</p><p>比如 <code>try { load(); } catch (err) {}</code> 里少写一个 <code>await</code>，<code>load</code> 内部的错误就跑到了外面，<code>catch</code> 什么也抓不到。</p><h2>串行与并行：别把无关的 await 串起来</h2><p>这是最容易拿到的性能优化，也是最容易被忽略的。</p><pre><code class="lang-js"><span class="tok-k">const</span> sleep = ms =&gt; <span class="tok-k">new</span> <span class="tok-f">Promise</span>(resolve =&gt; <span class="tok-f">setTimeout</span>(resolve, ms));
+
+<span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">measure</span>() {
+  <span class="tok-k">let</span> start = Date.<span class="tok-f">now</span>();
+
+  <span class="tok-k">await</span> <span class="tok-f">sleep</span>(<span class="tok-n">500</span>);
+  <span class="tok-k">await</span> <span class="tok-f">sleep</span>(<span class="tok-n">500</span>);
+  console.<span class="tok-f">log</span>(<span class="tok-s">'串行:'</span>, Date.<span class="tok-f">now</span>() - start, <span class="tok-s">'ms'</span>);
+
+  start = Date.<span class="tok-f">now</span>();
+
+  <span class="tok-k">await</span> Promise.<span class="tok-f">all</span>([<span class="tok-f">sleep</span>(<span class="tok-n">500</span>), <span class="tok-f">sleep</span>(<span class="tok-n">500</span>)]);
+  console.<span class="tok-f">log</span>(<span class="tok-s">'并行:'</span>, Date.<span class="tok-f">now</span>() - start, <span class="tok-s">'ms'</span>);
+}
+
+<span class="tok-f">measure</span>();
+
+<span class="tok-c">// 输出（数字会有几毫秒浮动）:</span>
+<span class="tok-c">// 串行: 1000 ms</span>
+<span class="tok-c">// 并行: 500 ms</span></code></pre><p>两个 500 毫秒的操作，串行写要 1 秒，并行只要 0.5 秒。判断标准很简单：<strong>后一个操作依赖前一个的结果吗？</strong></p><ul><li>依赖：必须串行。比如先登录拿 token，再拿用户信息。</li><li>不依赖：用 <code>Promise.all</code> 并行。比如同时拿用户信息和配置。</li></ul><p>串行处理数组时，<code>for...of</code> 加 <code>await</code> 是正确写法，它会一个接一个等：<code>for (const item of items) { results.push(await save(item)); }</code>。</p><p>如果顺序无所谓，用 <code>await Promise.all(items.map(item =&gt; save(item)))</code> 并发。但要注意并发量：几百个请求同时发出去，接口和浏览器都受不了，需要限流。这是第 19 章工程化会讲的内容。</p><h2>三个必须记住的坑</h2><h3>坑一：<code>forEach</code> 里的 <code>await</code> 无效</h3><pre><code class="lang-js"><span class="tok-k">const</span> ids = [<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>];
+<span class="tok-k">const</span> saved = [];
+
+ids.<span class="tok-f">forEach</span>(<span class="tok-k">async</span> (id) =&gt; {
+  <span class="tok-k">await</span> <span class="tok-f">sleep</span>(<span class="tok-n">100</span>);
+  saved.<span class="tok-f">push</span>(id);
+});
+
+console.<span class="tok-f">log</span>(saved);   <span class="tok-c">// 输出: []，一个都没保存完</span></code></pre><p>为什么？<code>forEach</code> 的设计是「对每个元素调用回调，然后立刻返回」。它<strong>不关心回调返不返回 Promise</strong>，也不会等。每个回调确实都异步跑了，但 <code>forEach</code> 自己早就结束了，所以 <code>console.log</code> 立刻执行，看到的是空数组。</p><p>同样的问题也出现在 <code>map</code> 上：<code>items.map(async ...)</code> 得到的是「一堆 Promise」，不是结果数组。必须再套 <code>Promise.all</code> 才有用。</p><p>需要等待就用 <code>for...of</code>（串行），或者 <code>await Promise.all(items.map(...))</code>（并行）。<code>forEach</code> 只适合「不关心结果、也不需要等」的副作用。</p><h3>坑二：忘记 <code>await</code>，拿到的是 Promise</h3><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">getCount2</span>() {
+  <span class="tok-k">return</span> <span class="tok-n">42</span>;
+}
+
+<span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">main</span>() {
+  <span class="tok-k">const</span> count = <span class="tok-f">getCount2</span>();       <span class="tok-c">// 忘了 await</span>
+  console.<span class="tok-f">log</span>(count);              <span class="tok-c">// 输出: Promise { 42 }</span>
+  console.<span class="tok-f">log</span>(count === <span class="tok-n">42</span>);       <span class="tok-c">// 输出: false</span>
+
+  <span class="tok-k">const</span> real = <span class="tok-k">await</span> <span class="tok-f">getCount2</span>();
+  console.<span class="tok-f">log</span>(real === <span class="tok-n">42</span>);        <span class="tok-c">// 输出: true</span>
+}
+
+<span class="tok-f">main</span>();</code></pre><p>浏览器控制台里，第一个 <code>count</code> 会显示成 <code>Promise {&lt;fulfilled&gt;: 42}</code>，Node 里显示 <code>Promise { 42 }</code>。不管显示成什么样，它都不是数字 42。拿它做运算、比较、渲染，结果全是错的，而且<strong>不报错</strong>——这是最难受的地方。</p><p>养成习惯：调用 async 函数时，问自己一句「我要的是 Promise，还是里面的值？」要值就必须 <code>await</code>，或者 <code>.then</code>。</p><h3>坑三：<code>fetch</code> 不会因为 4xx 抛错</h3><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">getUser</span>(id) {
+  <span class="tok-k">const</span> res = <span class="tok-k">await</span> <span class="tok-f">fetch</span>(<span class="tok-s">`/api/users/${id}`</span>);
+
+  console.<span class="tok-f">log</span>(res.ok);       <span class="tok-c">// 404 时输出: false</span>
+  console.<span class="tok-f">log</span>(res.status);   <span class="tok-c">// 404 时输出: 404</span>
+
+  <span class="tok-k">if</span> (!res.ok) {
+    <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">`请求失败: ${res.status}`</span>);
+  }
+
+  <span class="tok-k">return</span> res.<span class="tok-f">json</span>();
+}</code></pre><p><code>fetch</code> 只有在<strong>网络层失败</strong>时才 reject，比如断网、DNS 解析不了、跨域被拦。服务器返回 404、500 时，它认为「请求成功完成了，只是结果是错误状态」，所以 <code>await fetch(...)</code> 不抛错，你必须自己检查 <code>res.ok</code>。</p><p>不检查的后果：后面 <code>res.json()</code> 可能解析失败，或者拿到一个 <code>{ error: 'not found' }</code> 当成正常数据渲染，页面显示一堆 <code>undefined</code>。第 16 章会完整讲 <code>fetch</code> 和 HTTP 状态码。</p><h2>手写 <code>sleep</code> 与失败重试</h2><p><code>sleep</code> 是异步练习里最有用的小工具，它的写法就是一行：<code>const sleep = ms =&gt; new Promise(resolve =&gt; setTimeout(resolve, ms));</code>，上一节的 <code>measure</code> 里已经定义过。有了它，任何「等待」都能写成 <code>await sleep(1000)</code>，不用再嵌套 <code>setTimeout</code>。</p><p>失败重试是另一个真实需求。接口偶尔抖一下，重试两三次往往就好了：</p><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">retry</span>(fn, times = <span class="tok-n">3</span>, delay = <span class="tok-n">300</span>) {
+  <span class="tok-k">let</span> lastError;
+
+  <span class="tok-k">for</span> (<span class="tok-k">let</span> i = <span class="tok-n">1</span>; i &lt;= times; i++) {
+    <span class="tok-k">try</span> {
+      <span class="tok-k">return</span> <span class="tok-k">await</span> <span class="tok-f">fn</span>();
+    } <span class="tok-k">catch</span> (err) {
+      lastError = err;
+      console.<span class="tok-f">log</span>(<span class="tok-s">`第 ${i} 次失败: ${err.message}`</span>);
+      <span class="tok-k">if</span> (i &lt; times) <span class="tok-k">await</span> <span class="tok-f">sleep</span>(delay);
+    }
+  }
+
+  <span class="tok-k">throw</span> lastError;
+}
+
+<span class="tok-k">let</span> attempt = <span class="tok-n">0</span>;
+
+<span class="tok-f">retry</span>(<span class="tok-k">async</span> () =&gt; {
+  attempt += <span class="tok-n">1</span>;
+  <span class="tok-k">if</span> (attempt &lt; <span class="tok-n">3</span>) <span class="tok-k">throw</span> <span class="tok-k">new</span> <span class="tok-f">Error</span>(<span class="tok-s">'服务暂时不可用'</span>);
+  <span class="tok-k">return</span> <span class="tok-s">`第 ${attempt} 次成功`</span>;
+}).<span class="tok-f">then</span>(v =&gt; console.<span class="tok-f">log</span>(v));
+
+<span class="tok-c">// 输出:</span>
+<span class="tok-c">// 第 1 次失败: 服务暂时不可用</span>
+<span class="tok-c">// 第 2 次失败: 服务暂时不可用</span>
+<span class="tok-c">// 第 3 次成功</span></code></pre><p>这个函数有几个值得注意的设计：</p><ul><li><code>return await fn()</code> 让成功时直接结束整个重试，不再往下走。</li><li>每次失败后 <code>await sleep(delay)</code>，避免立刻重试把服务打得更惨。</li><li>循环结束后 <code>throw lastError</code>，把最后一次错误交给调用方，而不是吞掉。</li><li>参数有默认值，调用方只传一个函数也能用（第 12 章的默认参数在这里派上用场）。</li></ul><p>真实项目里还要加「只重试可恢复的错误」「指数退避」「最多等多久」，但骨架就是这个 <code>for</code> 循环加 <code>try/catch</code>。</p><h2>常见误区清单</h2><div class="table-wrap"><table><thead><tr><th>写法</th><th>结果</th><th>为什么</th></tr></thead><tbody><tr><td><code>setTimeout(fn, 0)</code> 以为立刻执行</td><td>排在同步代码和微任务之后</td><td>它只是把回调放进宏任务队列</td></tr><tr><td>在 executor 里写耗时循环</td><td>照样卡住页面</td><td>executor 是同步执行的</td></tr><tr><td><code>then</code> 里忘了 <code>return</code></td><td>下一个 <code>then</code> 拿到 <code>undefined</code></td><td>链上的值靠返回值传递</td></tr><tr><td><code>Promise.all</code> 里一个失败</td><td>整体立刻失败，其他结果拿不到</td><td>它是「全部成功才算成功」</td></tr><tr><td><code>forEach(async () =&gt; { await ... })</code></td><td>循环立刻结束，没等到结果</td><td><code>forEach</code> 不处理回调返回的 Promise</td></tr><tr><td><code>const x = asyncFn()</code></td><td><code>x</code> 是 Promise，不是数据</td><td>async 函数永远返回 Promise</td></tr><tr><td><code>await fetch()</code> 后不检查 <code>res.ok</code></td><td>404 被当成成功</td><td><code>fetch</code> 只在网络层失败时 reject</td></tr><tr><td><code>try/catch</code> 里调用 async 函数但没 await</td><td>错误抓不到</td><td>错误在返回的 Promise 里</td></tr><tr><td>两个无关请求写成两个 <code>await</code></td><td>耗时相加</td><td>没有依赖就该用 <code>Promise.all</code></td></tr><tr><td><code>await</code> 写在普通函数里</td><td>语法错误</td><td><code>await</code> 只能在 async 函数或模块顶层用</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>下面这段输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-f">setTimeout</span>(() =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'A'</span>), <span class="tok-n">0</span>);
+Promise.<span class="tok-f">resolve</span>().<span class="tok-f">then</span>(() =&gt; console.<span class="tok-f">log</span>(<span class="tok-s">'B'</span>));
+console.<span class="tok-f">log</span>(<span class="tok-s">'C'</span>);</code></pre><p>输出 <code>C B A</code>。同步的 <code>C</code> 先执行；同步结束后清空微任务，打印 <code>B</code>；最后才轮到宏任务 <code>A</code>。</p></div></details><details class="quiz"><summary><code>await</code> 会阻塞整个页面吗？</summary><div class="quiz-body"><p>不会。它只暂停当前这个 async 函数，把后续代码注册成微任务，主线程继续执行其他代码。真正会阻塞页面的是同步的耗时循环，或者 executor 里的重计算。</p></div></details><details class="quiz"><summary><code>async function f() { return 1; }</code>，那么 <code>f() === 1</code> 成立吗？<code>f()</code> 到底是什么？</summary><div class="quiz-body"><p>不成立。<code>f()</code> 返回的是一个 fulfilled 的 Promise，值是 1。要拿到 1 必须 <code>await f()</code> 或 <code>f().then(v =&gt; ...)</code>。</p></div></details><details class="quiz"><summary>三个接口中有一个可能失败，但你想拿到全部三个的结果分别展示，用哪个方法？</summary><div class="quiz-body"><p>用 <code>Promise.allSettled</code>。它等全部落定，返回每项的状态和值/原因，不会因为一个失败就整体失败。<code>Promise.all</code> 在这种情况下会直接 reject。</p></div></details><details class="quiz"><summary>下面这段输出什么？为什么？</summary><div class="quiz-body"><pre><code class="lang-js">[<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>].<span class="tok-f">forEach</span>(<span class="tok-k">async</span> n =&gt; {
+  <span class="tok-k">await</span> <span class="tok-k">null</span>;
+  console.<span class="tok-f">log</span>(n);
+});
+console.<span class="tok-f">log</span>(<span class="tok-s">'done'</span>);</code></pre><p>先输出 <code>done</code>，再输出 <code>1</code>、<code>2</code>、<code>3</code>。<code>forEach</code> 不等回调里的 <code>await</code>，自己先返回，所以 <code>done</code> 先打印；三个回调随后在微任务里按顺序恢复。</p></div></details><details class="quiz"><summary><code>Promise.race</code> 和 <code>Promise.any</code> 的区别是什么？</summary><div class="quiz-body"><p><code>race</code> 取第一个<strong>落定</strong>的结果，成功或失败都算；<code>any</code> 忽略失败，取第一个<strong>成功</strong>的结果，全部失败才抛 <code>AggregateError</code>。做超时控制用 <code>race</code>，做多源容错用 <code>any</code>。</p></div></details><details class="quiz"><summary>下面这段输出什么？</summary><div class="quiz-body"><pre><code class="lang-js"><span class="tok-k">async</span> <span class="tok-k">function</span> <span class="tok-f">run</span>() {
+  console.<span class="tok-f">log</span>(<span class="tok-n">1</span>);
+  <span class="tok-k">await</span> <span class="tok-n">1</span>;
+  console.<span class="tok-f">log</span>(<span class="tok-n">2</span>);
+}
+<span class="tok-f">run</span>();
+console.<span class="tok-f">log</span>(<span class="tok-n">3</span>);</code></pre><p>输出 <code>1 3 2</code>。<code>await</code> 任何值都会让出一次微任务，<code>run</code> 暂停后外面的 <code>console.log(3)</code> 先执行，之后才恢复打印 2。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>写 <code>sleep(ms)</code>，再用它实现 <code>delayLog</code>：依次打印「开始」，等 1 秒打印「1 秒」，再等 1 秒打印「2 秒」，最后打印「结束」。 验收：总耗时约 2 秒；四行输出顺序正确；代码里没有嵌套 <code>setTimeout</code>。</li></ol><ol><li>写 <code>loadAll(ids)</code>，用 <code>Promise.all</code> 并行「请求」多个用户（用 <code>sleep</code> 加随机延迟模拟），全部成功后按传入顺序返回名字数组。 验收：返回顺序与 <code>ids</code> 顺序一致，不受完成先后影响；总耗时接近最慢的那个，而不是所有延迟之和。</li></ol><ol><li>把一段三层回调嵌套的代码改写成 async/await，并用 <code>try/catch</code> 统一处理错误。 验收：没有出现三层以上的缩进；任意一层抛错都能被同一个 <code>catch</code> 捕获；<code>finally</code> 里能正确关闭 loading 状态。</li></ol><p><strong>进阶</strong></p><ol><li>写 <code>withTimeout(promise, ms)</code>，超过时间就抛「超时」错误。提示：用 <code>Promise.race</code> 和一个「到点就 reject」的 Promise。 验收：传入一个 500 毫秒才完成的 Promise、超时设为 200 毫秒时，200 毫秒左右抛错；正常完成时不抛错。</li></ol><ol><li>写 <code>retry(fn, times, delay)</code> 并测试三种情况：第一次就成功、第三次才成功、三次都失败。 验收：成功时返回结果且不重复执行；失败时抛出最后一次的错误；每次重试之间有延迟；总调用次数等于 <code>times</code>。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>这一章是后面所有「与服务器打交道」的地基。第 16 章的 <code>fetch</code>、第 18 章的待办项目、第 19 章的构建脚本，本质都是「发一个异步操作，等结果，再处理」。</p><p>如果只记三句话：<strong>同步先跑，微任务清空，宏任务排队</strong>；<strong>async 函数永远返回 Promise</strong>；<strong>无关的 await 要并行</strong>。把这三条变成本能，90% 的异步 bug 就不会发生在你身上。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="12.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>上一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="14.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"13","title":"异步：回调、Promise、async/await"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>先想清楚：这条路怎么走 · JS 通勤课</title>
+<meta name="description" content="这门课能带你到哪里、每天两小时怎么分配、手机和电脑各自负责什么，以及一份不容易半途而废的节奏表。">
+<meta name="theme-color" content="#fbfaf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/icon-192.png">
+<link rel="stylesheet" href="../assets/base.css">
+</head>
+<body data-page="chapter">
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="icon-btn" href="../index.html" aria-label="返回目录"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></a>
+    <div class="topbar-title">先想清楚：这条路怎么走</div>
+    <button class="icon-btn" type="button" data-font-cycle aria-label="调整字号">Aa</button>
+    <button class="icon-btn" type="button" data-top-done aria-pressed="false" aria-label="标记已读">标记已读</button>
+  </div>
+  <div class="read-progress"></div>
+</header>
+
+<main class="container">
+  <div class="chapter-head">
+    <div class="meta">第 01 章 · 约 22 分钟</div>
+    <h1>先想清楚：这条路怎么走</h1>
+    <p class="lede">这门课能带你到哪里、每天两小时怎么分配、手机和电脑各自负责什么，以及一份不容易半途而废的节奏表。</p>
+  </div>
+
+  <nav id="toc" class="chapter-toc" hidden></nav>
+
+  <article id="article">
+<blockquote><p>这一章几乎没有代码。但它决定了你后面 19 章是「读完了」还是「学会了」。</p><p>如果你只有 20 分钟，请一定把这一章读完。它会告诉你：这门课到底有多深、每天该花多少时间、手机上能做什么不能做什么、卡住的时候该怎么办。</p></blockquote><h2>先说清楚：这门课是什么</h2><p>你的目标很具体：<strong>用 JS/TS + Node 开发网站和小程序</strong>。</p><p>把这句话拆开，是四层能力，一层压一层：</p><div class="table-wrap"><table><thead><tr><th>层次</th><th>具体内容</th><th>学不好会怎样</th></tr></thead><tbody><tr><td>语言层</td><td>语法、数据类型、函数、作用域、异步</td><td>看得懂教程，写不出代码</td></tr><tr><td>浏览器层</td><td>DOM、事件、网络请求、本地存储</td><td>做不出有交互的页面</td></tr><tr><td>工程层</td><td>模块化、npm、构建工具、Git</td><td>项目一大就乱，无法上线</td></tr><tr><td>运行时层</td><td>Node 接口、数据库、TypeScript、小程序</td><td>只能做静态页面，做不了全栈</td></tr></tbody></table></div><p>这门课覆盖<strong>前三层</strong>，第 20 章给你第四层的完整路线图。</p><p>学完之后你应该能做到：</p><ul><li>看到一段普通 JS 代码，能逐行说出它在干什么</li><li>独立写出一个「有界面、能请求接口、刷新不丢数据」的网页应用</li><li>看懂大多数前端项目里 70% 的代码，剩下的靠查文档补</li><li>知道下一步该学 TypeScript、Node 还是小程序，以及为什么</li></ul><h3>这门课不是什么</h3><ul><li><strong>不是速成班</strong>。20 章覆盖的是「能独立写项目」的地基，不是「三天上手框架」。</li><li><strong>不是面试题合集</strong>。面试题会在你真正理解之后自然能答，反过来背题没有用。</li><li><strong>不会教你所有 API</strong>。JS 有几百个内置方法，这门课只讲高频的、你必须形成肌肉记忆的那部分。剩下的查 <a href="https://developer.mozilla.org/zh-CN/docs/Web/JavaScript" target="_blank" rel="noopener">MDN</a> 就行。</li></ul><h2>为什么通勤学习容易半途而废</h2><p>先看清敌人，才好对付它。通勤学编程失败通常有三个原因：</p><p><strong>1. 把技术书当小说读</strong></p><p>每个字都认识，合上手机什么都写不出来。因为「读懂」只是识别，「写出来」才是回忆和组装，两者是完全不同的能力。</p><p><strong>2. 手机上试图敲代码</strong></p><p>手机输入 <code>{</code> <code>}</code> <code>(</code> <code>)</code> <code>;</code> 极其痛苦，一个分号能找半分钟。这种摩擦会迅速消耗掉你本就不多的学习热情，最后得出「我不适合编程」的错误结论。</p><p><strong>3. 追求「一次全懂」</strong></p><p>遇到一个没懂的点就停下来死磕，两小时过去还在第一页，进度停滞，然后放弃。</p><p>对应的三条对策，也是这门课的设计原则：</p><ul><li>手机只负责<strong>理解概念和判断对错</strong>，代码在电脑上敲</li><li>每章末尾用<strong>折叠自测题</strong>检查「是否真懂」，而不是靠感觉</li><li>允许<strong>带着问号往前走</strong>，很多概念要学完后面几章才能回头看懂</li></ul><h2>每天两小时怎么分配</h2><p>假设你单程通勤 1 小时。推荐这样切：</p><div class="table-wrap"><table><thead><tr><th>时间段</th><th>做什么</th><th>目标</th></tr></thead><tbody><tr><td>早上通勤</td><td>读新章节的前半部分</td><td>只求理解「为什么」，不求记住</td></tr><tr><td>午休 10 分钟</td><td>点开本章自测题，先自己想</td><td>找出没懂的点，标记下来</td></tr><tr><td>晚上通勤</td><td>读完剩下的部分 + 重看自测题</td><td>把白天不懂的地方补上</td></tr><tr><td>到家 30~40 分钟</td><td>在电脑上敲「动手练习」</td><td>跑通、改参数、看变化</td></tr></tbody></table></div><p>一周下来，大约能扎实完成 2~3 章。20 章大约 8~10 周。这个速度不快，但它是<strong>能坚持下来的速度</strong>。</p><div class="callout callout-warn"><span class="callout-label">注意</span><p>不要给自己定「一周学完」的目标。编程不是背单词，理解需要时间沉淀。定得太急，你会在第 5 章左右放弃，然后过三个月重新从第 1 章开始——这是最常见的循环。</p></div><h2>一个完整的学习闭环</h2><p>每章都按同一个循环走，养成习惯后效率会明显提升：</p><ol><li><strong>读</strong>：只看「为什么」。这段代码解决什么问题？不这样写会怎样？</li><li><strong>测</strong>：点开「通勤自测」，遮住答案先自己想。想不出来是好事，说明找到了盲区。</li><li><strong>敲</strong>：到电脑上把「动手练习」敲一遍。不要复制粘贴，手打。</li><li><strong>改</strong>：跑通之后故意改坏它。把 <code>===</code> 改成 <code>==</code>、把 <code>let</code> 改成 <code>const</code>、删掉一个 <code>return</code>，看报什么错。</li><li><strong>记</strong>：只记三句话——这章解决了什么、我踩了什么坑、我还没懂什么。</li></ol><p>第 4 步最容易被跳过，但它才是真正让你记住的地方。看别人改错十次，不如自己制造一次错误。</p><h2>手机上怎么读这套资料</h2><p>这套资料做成了网页，可以装到手机主屏幕上，有这些能力：</p><ul><li><strong>自动记住进度</strong>：每章读到哪、哪些标记为已读完，都存在你手机本地</li><li><strong>继续阅读</strong>：首页顶部有「继续阅读」，直接跳到上次的位置</li><li><strong>可调字号</strong>：右上角 <code>Aa</code> 按钮循环切换字号，通勤光线差时可以调大</li><li><strong>可离线</strong>：第一次完整打开后，内容会缓存到本地，地铁没信号也能读</li><li><strong>本章目录</strong>：小节较多的章节，正文上方有可折叠的目录</li></ul><p>进度保存在<strong>当前设备的浏览器</strong>里。手机和平板各自独立，不会自动同步；需要迁移时用首页底部的「导出进度 / 导入进度」。</p><div class="callout callout-tip"><span class="callout-label">提示</span><p>读的时候不要追求「划重点」。技术内容不是历史书，划了也不会记住。真正有效的是每读完一节，在心里问一句：<strong>如果让我给同事讲这一节，我会怎么说？</strong> 说不出来，就回去再看一遍那几段。</p></div><h2>电脑上要准备的三样东西</h2><p>全部免费，10 分钟能装完。</p><h3>1. 浏览器控制台</h3><p>Chrome 或 Edge，按 <code>F12</code>（Mac 是 <code>Option + Command + I</code>），切到 <strong>Console</strong> 面板。</p><p>这是你未来最常用的实验场。任何一行 JS 都能在这里立刻执行，不需要建文件、不需要保存、不需要运行：</p><pre><code class="lang-js"><span class="tok-n">1</span> + <span class="tok-n">1</span>
+<span class="tok-s">'hello'</span> + <span class="tok-s">' '</span> + <span class="tok-s">'world'</span>
+[<span class="tok-n">1</span>, <span class="tok-n">2</span>, <span class="tok-n">3</span>].<span class="tok-f">map</span>(n =&gt; n * <span class="tok-n">2</span>)</code></pre><p>回车就会出结果。学这门课时，看到任何不确定的代码，都先粘到这里跑一下。</p><h3>2. Node.js</h3><p>去 <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a> 下载 <strong>LTS 版本</strong>（长期支持版），一路下一步。装完打开终端（Windows 搜「PowerShell」）：</p><pre><code class="lang-bash">node -v
+# 输出类似 v22.x.x 或 v24.x.x 就成功了
+
+npm -v
+# npm 是 Node 自带的包管理器，会一起装好</code></pre><p>看到版本号就说明成功。这一步的意义是：<strong>JS 不只能在浏览器里跑，也能在电脑上跑</strong>。第 14 章之后你会经常用它。</p><h3>3. VS Code</h3><p>写代码的编辑器。装两个插件就够：</p><ul><li><strong>Chinese (Simplified) Language Pack</strong>：中文界面</li><li><strong>Prettier</strong>：保存时自动格式化，省掉和空格、缩进较劲的时间</li></ul><p>其他插件等真正需要时再装。一开始就折腾配置，是另一种拖延。</p><h2>代码怎么看懂：三个提问法</h2><p>初学者看代码容易「从左往右逐字读」，读完仍然不知道整体在干什么。改用一个更有效的方法：看任何一段代码，先回答三个问题。</p><p><strong>问题一：输入是什么，输出是什么？</strong></p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">calcTotal</span>(items) {
+  <span class="tok-k">return</span> items.<span class="tok-f">reduce</span>((sum, item) =&gt; sum + item.price * item.count, <span class="tok-n">0</span>);
+}</code></pre><p>先别管 <code>reduce</code> 怎么用。先问：传进去什么？传出来什么？答案是：传一个商品数组，返回总金额。知道这个，你就已经理解这段代码 80% 的用途了。</p><p><strong>问题二：如果删掉这一行，会发生什么？</strong></p><p>这能帮你判断每一行是「必需的」还是「可有可无的」。</p><p><strong>问题三：这段代码在什么情况下会出错？</strong></p><pre><code class="lang-js"><span class="tok-k">function</span> <span class="tok-f">getFirst</span>(arr) {
+  <span class="tok-k">return</span> arr[<span class="tok-n">0</span>].name;   <span class="tok-c">// arr 为空数组时会怎样？</span>
+}</code></pre><p>养成这个习惯，你读代码的速度会明显快于逐字阅读，而且能提前发现 bug。</p><h2>卡住了怎么办</h2><p>一定会卡住，这很正常。按这个顺序处理：</p><ol><li><strong>先跑一遍</strong>。把代码粘到控制台，改几个值看输出。很多疑惑跑一次就没了。</li><li><strong>查 MDN</strong>。搜索「MDN 方法名」，看函数签名、参数、返回值、示例。不要看二手博客。</li><li><strong>缩小问题</strong>。把 20 行代码删到 5 行，只保留让你困惑的部分。大部分 bug 在缩小过程中自己就暴露了。</li><li><strong>允许跳过</strong>。标记一个问号，继续往后读。第 9 章的闭包看不懂，可能第 13 章讲异步时回头一看就通了。</li><li><strong>别在同一个点上耗超过 40 分钟</strong>。超过就记下来，第二天再看。疲劳状态下想不通的东西，睡一觉往往就通了。</li></ol><div class="callout callout-warn"><span class="callout-label">注意</span><p>遇到报错不要慌，也不要立刻上网搜。先读报错信息本身：它通常明确告诉了你<strong>哪个文件、哪一行、什么类型的问题</strong>。第 17 章会专门教你读报错。现在只需要知道：报错是正常的，红色不代表你不行。</p></div><h2>20 章的地图</h2><div class="table-wrap"><table><thead><tr><th>阶段</th><th>章节</th><th>你会得到什么</th></tr></thead><tbody><tr><td>语言基础</td><td>02~08</td><td>能读懂任何一段普通 JS 代码，能写出小工具</td></tr><tr><td>语言进阶</td><td>09~14</td><td>能理解框架源码里的奇怪写法，会用异步和模块</td></tr><tr><td>浏览器实战</td><td>15~18</td><td>能写出真正能用的网页应用</td></tr><tr><td>走向全栈</td><td>19~20</td><td>能建项目、能部署、知道下一步学什么</td></tr></tbody></table></div><p>每一章的结构都是固定的：</p><ul><li>开头一段说明「这章解决什么问题」</li><li>中间是概念 + 可运行代码 + 输出结果</li><li><code>提示</code> / <code>注意</code> 块补充易错点</li><li><strong>通勤自测</strong>：可折叠的问题，先自己想再点开</li><li><strong>动手练习</strong>：必做 3 题 + 进阶 2 题，每题有验收标准</li></ul><h2>学习节奏表</h2><p>一份可以直接抄的周计划：</p><div class="table-wrap"><table><thead><tr><th>时间</th><th>任务</th></tr></thead><tbody><tr><td>周一~周二通勤</td><td>读一章的前半部分，标记不懂的地方</td></tr><tr><td>周二晚</td><td>敲这一章的前两个练习</td></tr><tr><td>周三~周四通勤</td><td>读完这章，做一遍自测</td></tr><tr><td>周四晚</td><td>敲完剩余练习，改坏代码看报错</td></tr><tr><td>周五通勤</td><td>复习本周两章的自测题</td></tr><tr><td>周末</td><td>补齐没敲完的练习，或提前读下一章</td></tr></tbody></table></div><p>如果某周特别忙，只完成「读 + 自测」也可以。<strong>不要因为没敲代码就中断阅读</strong>，保持连续性比单周进度重要得多。</p><h2>常见误区清单</h2><div class="table-wrap"><table><thead><tr><th>想法</th><th>实际情况</th></tr></thead><tbody><tr><td>「我要先把语法全背下来再写项目」</td><td>语法是查出来的，不是背出来的。边写边查才是常态</td></tr><tr><td>「这个视频没看完不能看下一个」</td><td>视频看三遍不如自己敲一遍</td></tr><tr><td>「报错了说明我学得不好」</td><td>报错是主要的学习信号，专业开发者每天都在看报错</td></tr><tr><td>「收藏了就等于学会了」</td><td>收藏是拖延的伪装，只收藏你本周会看的</td></tr><tr><td>「我要搭一个完美的笔记系统」</td><td>手机备忘录三句话足够，工具折腾是逃避学习</td></tr><tr><td>「别人三个月能转行，我也可以」</td><td>别人的三个月可能是每天 6 小时，你的两小时要按比例算</td></tr><tr><td>「学完 JS 就能直接做小程序」</td><td>还需要框架、工具链和一遍完整的项目练习</td></tr></tbody></table></div><h2>通勤自测</h2><details class="quiz"><summary>如果今天只有 20 分钟，应该做什么？</summary><div class="quiz-body"><p>读当前这一章的一小节，或者做本章的自测题。不要开新章，也不要试图在手机上敲代码。<strong>保持连续性</strong>比单次时长重要。</p></div></details><details class="quiz"><summary>为什么强调「晚上必须到电脑上敲一遍」？</summary><div class="quiz-body"><p>因为「看懂」是识别，「写出来」是回忆加组装，两种能力完全不同。只有后者会形成长期记忆，也才是工作和面试真正考察的。而且敲的过程中会暴露你以为了解、其实误解的地方。</p></div></details><details class="quiz"><summary>读到第 9 章闭包完全不懂，应该停下来补，还是继续往后读？</summary><div class="quiz-body"><p>先按「缩小问题」的方法试一次（把例子简化到 5 行跑一遍）。如果 40 分钟仍然不通，标记问号继续往后读。很多概念需要后面的知识才能反哺理解，卡死在一个点是通勤学习最常见的失败原因。</p></div></details><details class="quiz"><summary>这套资料的进度记录存在哪里？换手机会自动同步吗？</summary><div class="quiz-body"><p>存在当前浏览器的 <code>localStorage</code> 里，只属于这台设备。换设备需要在首页用「导出进度」生成一份 JSON，再到新设备「导入进度」。没有服务器，所以不会自动同步。</p></div></details><details class="quiz"><summary>为什么手机只读、电脑才敲，而不是想办法在手机上写代码？</summary><div class="quiz-body"><p>手机输入符号的成本极高，会消耗学习热情。手机适合「输入概念 + 判断对错」，电脑适合「输出代码 + 调试」。分工明确，两件事的效率都会更高。</p></div></details><details class="quiz"><summary>为什么把「通勤自测」做成可折叠的，而不是直接给答案？</summary><div class="quiz-body"><p>折叠会迫使你先在心里输出答案，再点开对照。直接看答案容易产生「我懂了」的错觉；先想再验证，才能暴露真正的理解偏差。</p></div></details><details class="quiz"><summary>20 章全部读完大约要多久？某周只读没敲代码，算失败吗？</summary><div class="quiz-body"><p>按每天通勤 2 小时、每周 2~3 章算，大约 8~10 周。某周只读没敲不算失败，保持连续性比单周产出更重要；但如果连续三周都没敲代码，就要停下来补练习，否则会退化成「读得懂、写不出」。</p></div></details><h2>动手练习（到电脑上做）</h2><p><strong>必做</strong></p><ol><li>安装 Node.js，在终端执行 <code>node -v</code> 和 <code>npm -v</code>，把两个版本号记在备忘录里。 验收：两条命令都能输出版本号，没有「不是内部或外部命令」的报错。</li></ol><ol><li>打开浏览器控制台，依次执行 <code>1 + 1</code>、<code>'2' + 1</code>、<code>'2' - 1</code>、<code>typeof null</code>，把结果抄下来，并各自猜一个原因。 验收：四个结果都拿到，且能说出 <code>'2' + 1</code> 和 <code>'2' - 1</code> 结果不同的原因（第 2 章会验证你的猜测）。</li></ol><ol><li>在桌面新建 <code>hello.js</code>，写入 <code>console.log('我在学了')</code>，在文件所在目录执行 <code>node hello.js</code>。 验收：终端输出「我在学了」。</li></ol><p><strong>进阶</strong></p><ol><li>在控制台写一行代码，计算「一本书 59.9 元，买 3 本，打 8 折」的总价，要求输出保留两位小数。 验收：输出 <code>143.76</code>（或你能解释为什么不是这个数）。</li></ol><ol><li>用 <code>console.time</code> / <code>console.timeEnd</code> 包住一段循环，测出 <code>for (let i = 0; i &lt; 1000000; i++) {}</code> 在你这台电脑上要跑多久。 验收：能在控制台看到毫秒数，并知道这个数字只是参考、不同电脑不一样。</li></ol><div class="callout callout-tip"><span class="callout-label">提示</span><p>做完第 3 题，你就已经跑通了「JS 不只在浏览器里运行」这件事——这正是 Node 存在的意义，也是你后面做接口开发的基础。</p><p>下一章正式开始。记住三件事：**默认用 <code>const</code>、一律用 <code>===</code>、字符串方法要接住返回值**。这三条会贯穿整门课。</p></div>
+  </article>
+
+  <div class="chapter-end">
+    <button class="done-btn" type="button" data-done-toggle>标记本章已读完</button>
+    <p>读完这一章，就到电脑上把「动手练习」敲一遍。通勤路上看不牢的地方，很正常。</p>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a class="is-disabled" href="#" aria-disabled="true" tabindex="-1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span>已是第一章</span></a>
+  <a href="../index.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg><span>目录</span></a>
+  <a href="02.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg><span>下一章</span></a>
+</nav>
+
+<script src="../assets/course-data.js"></script>
+<script>window.__CHAPTER__ = {"id":"01","title":"先想清楚：这条路怎么走"};</script>
+<script src="../assets/app.js"></script>
+</body>
+</html>
